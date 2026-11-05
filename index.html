@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Santé Troupeau</title>
+<meta name="theme-color" content="#2f6b3a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Santé Troupeau">
+<style>
+:root{--bg:#f4f6f2;--card:#fff;--ink:#1f2a1f;--mute:#667066;--line:#dfe4dc;--pri:#2f6b3a;--pri2:#e5f0e6;--warn:#b26b00;--warn2:#fff4e0;--bad:#b3261e;--bad2:#fde8e6;--ok:#2f6b3a}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px}
+header{background:var(--pri);color:#fff;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;position:sticky;top:0;z-index:5}
+header h1{font-size:18px;margin:0 12px 0 0}
+nav{display:flex;flex-wrap:wrap;gap:4px}
+nav button{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:14px}
+nav button.on{background:#fff;color:var(--pri);font-weight:600}
+main{max-width:1200px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.card h2{margin:0 0 10px;font-size:17px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+label{display:flex;flex-direction:column;font-size:12px;color:var(--mute);gap:3px}
+input,select,textarea{font:inherit;padding:7px 8px;border:1px solid #c9d0c6;border-radius:6px;background:#fff;color:var(--ink);min-width:0}
+textarea{min-height:70px}
+button.b{background:var(--pri);color:#fff;border:0;border-radius:6px;padding:8px 12px;cursor:pointer;font:inherit}
+button.b2{background:var(--pri2);color:var(--pri);border:1px solid #c5dbc8;border-radius:6px;padding:7px 11px;cursor:pointer;font:inherit}
+button.del{background:var(--bad2);color:var(--bad);border:1px solid #f2c4bf;border-radius:6px;padding:5px 9px;cursor:pointer}
+button.sm{padding:4px 8px;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#eef2ec;font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.03em}
+.tw{overflow-x:auto}
+.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;background:#eef2ec}
+.pill.w{background:var(--warn2);color:var(--warn)}.pill.r{background:var(--bad2);color:var(--bad)}.pill.g{background:var(--pri2);color:var(--pri)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px}
+.kpi b{display:block;font-size:26px}
+.kpi span{color:var(--mute);font-size:13px}
+.mute{color:var(--mute)}
+.alert{padding:8px 10px;border-radius:6px;margin:4px 0}
+.alert.w{background:var(--warn2);color:#6b4100}.alert.r{background:var(--bad2);color:#7a1a14}
+dialog{border:0;border-radius:12px;padding:0;width:min(960px,96vw);max-height:92vh}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+dialog form{padding:16px;overflow:auto;max-height:92vh}
+dialog h3{margin:0 0 12px}
+.ligne{border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0;background:#fafbf9}
+.anlist{max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:6px;columns:3 200px}
+.anlist label{flex-direction:row;align-items:center;gap:6px;color:var(--ink);font-size:14px;break-inside:avoid}
+.foot{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;position:sticky;bottom:-16px;background:#fff;padding:10px 0}
+.hint{font-size:12px;color:var(--mute)}
+.calc{font-size:13px;color:var(--pri);margin-top:6px}
+#login{position:fixed;inset:0;background:var(--bg);z-index:50;display:none;align-items:center;justify-content:center;padding:16px}
+.lbox{background:#fff;border:1px solid var(--line);border-radius:12px;padding:22px;width:min(420px,100%);display:flex;flex-direction:column;gap:10px}
+.lbox h2{margin:0 0 6px;color:var(--pri)}
+.lbox .err{color:var(--bad);font-size:14px}
+@media print{header,.noprint,button{display:none!important}body{background:#fff}.card{border:0;padding:0}main{padding:0}}
+@media (max-width:600px){main{padding:10px}header h1{width:100%}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🐄 Santé Troupeau</h1>
+  <nav id="nav"></nav>
+</header>
+<main id="app"></main>
+<dialog id="dlg"><form id="dlgForm"></form></dialog>
+<datalist id="dl-prod"></datalist>
+<datalist id="dl-mal"></datalist>
+<datalist id="dl-vet"></datalist>
+<div id="login"></div>
+<script src="firebase-config.js"></script>
+<script>
+/* =========================================================
+   RÉFÉRENTIELS
+   Délais d'attente INDICATIFS : toujours vérifier l'ordonnance / la notice (RCP).
+   null = non renseigné (à compléter)   -1 = interdit chez les femelles en lactation
+   ========================================================= */
+const CATALOGUE = [
+// nom, principe actif, catégorie, unité, contenance, attente lait (j), attente viande (j)
+['Excenel RTU EZ','Ceftiofur','Antibiotique','mL',100,0,8],
+['Naxcel 200 mg/mL','Ceftiofur','Antibiotique','mL',100,null,null],
+['Cobactan 2,5 %','Cefquinome','Antibiotique','mL',100,1,5],
+['Marbocyl 10 %','Marbofloxacine','Antibiotique','mL',100,3,6],
+['Forcyl','Marbofloxacine','Antibiotique','mL',100,null,null],
+['Baytril 10 %','Enrofloxacine','Antibiotique','mL',100,null,null],
+['Draxxin','Tulathromycine','Antibiotique','mL',100,-1,22],
+['Zuprevo 180 mg/mL','Tildipirosine','Antibiotique','mL',100,-1,47],
+['Nuflor','Florfénicol','Antibiotique','mL',100,-1,30],
+['Resflor','Florfénicol + flunixine','Antibiotique','mL',100,-1,null],
+['Shotapen L.A.','Pénicilline + dihydrostreptomycine','Antibiotique','mL',100,null,null],
+['Duphapen L.A.','Benzylpénicilline benzathine','Antibiotique','mL',100,null,null],
+['Depocilline','Benzylpénicilline procaïne','Antibiotique','mL',100,null,null],
+['Alamycin L.A. 300','Oxytétracycline','Antibiotique','mL',100,null,null],
+['Terramycine L.A.','Oxytétracycline','Antibiotique','mL',100,null,null],
+['Synulox RTU','Amoxicilline + ac. clavulanique','Antibiotique','mL',100,null,null],
+['Clamoxyl L.A.','Amoxicilline','Antibiotique','mL',100,null,null],
+['Borgal 24 %','Sulfadoxine + triméthoprime','Antibiotique','mL',100,null,null],
+['Micotil 300','Tilmicosine','Antibiotique','mL',100,-1,null],
+['Metricure','Céfapirine (intra-utérin)','Antibiotique','injecteur',1,0,0],
+// Intramammaires
+['Ubrolexin','Céfalexine + kanamycine','Intramammaire','injecteur',1,5,10],
+['Cobactan LC','Cefquinome','Intramammaire','injecteur',1,null,null],
+['Synulox LC','Amoxicilline + ac. clavulanique','Intramammaire','injecteur',1,null,null],
+['Mastiplan LC','Céfapirine + prednisolone','Intramammaire','injecteur',1,null,null],
+['Orbenin Extra DC','Cloxacilline (tarissement)','Intramammaire','injecteur',1,null,null],
+['Cepravin DC','Céfalonium (tarissement)','Intramammaire','injecteur',1,null,null],
+['Ubro Red','Tarissement','Intramammaire','injecteur',1,null,null],
+['Mamyzin','Penethamate','Antibiotique','flacon',1,null,null],
+['Orbeseal','Obturateur de trayon','Intramammaire','injecteur',1,0,0],
+// Anti-inflammatoires
+['Metacam 20 mg/mL','Méloxicam','Anti-inflammatoire','mL',100,5,15],
+['Rheumocam 20 mg/mL','Méloxicam','Anti-inflammatoire','mL',100,null,null],
+['Ketofen 10 %','Kétoprofène','Anti-inflammatoire','mL',100,0,1],
+['Finadyne','Flunixine','Anti-inflammatoire','mL',100,null,null],
+['Megluflex','Flunixine','Anti-inflammatoire','mL',100,null,null],
+['Dexadreson','Dexaméthasone','Anti-inflammatoire','mL',50,null,null],
+['Tolfine','Acide tolfénamique','Anti-inflammatoire','mL',100,null,null],
+// Antiparasitaires
+['Ivomec injectable','Ivermectine','Antiparasitaire','mL',50,-1,49],
+['Eprinex pour-on','Éprinomectine','Antiparasitaire','mL',1000,0,15],
+['Eprecis','Éprinomectine injectable','Antiparasitaire','mL',100,null,null],
+['Cydectin 0,5 % pour-on','Moxidectine','Antiparasitaire','mL',1000,null,null],
+['Dectomax injectable','Doramectine','Antiparasitaire','mL',100,null,null],
+['Panacur 2,5 %','Fenbendazole','Antiparasitaire','mL',1000,null,null],
+['Valbazen 10 %','Albendazole','Antiparasitaire','mL',1000,null,null],
+['Fasinex','Triclabendazole','Antiparasitaire','mL',1000,null,null],
+['Distocur','Oxyclozanide','Antiparasitaire','mL',1000,null,null],
+['Butox pour-on','Deltaméthrine','Antiparasitaire','mL',1000,null,null],
+['Halocur','Halofuginone','Antidiarrhéique','mL',500,-1,13],
+['Baycox Bovis 50 mg/mL','Toltrazuril','Antiparasitaire','mL',250,-1,63],
+['Vecoxan','Diclazuril','Antiparasitaire','mL',1000,-1,0],
+// Métabolisme / vitamines
+['Calcium injectable (borogluconate)','Calcium','Vitamines/minéraux','mL',500,0,0],
+['Bolus calcium','Calcium oral','Vitamines/minéraux','bolus',1,0,0],
+['Vitamine AD3E','Vitamines A, D3, E','Vitamines/minéraux','mL',100,null,null],
+['Sélénium + vitamine E','Sélénium, vit. E','Vitamines/minéraux','mL',100,null,null],
+['Kexxtone','Monensin (bolus)','Vitamines/minéraux','bolus',1,0,0],
+['Propylène glycol','Propylène glycol','Vitamines/minéraux','mL',5000,0,0],
+['Réhydratant oral','Électrolytes','Antidiarrhéique','dose',1,0,0],
+// Reproduction
+['Receptal','Buséréline','Hormone','mL',10,0,0],
+['Enzaprost T','Dinoprost','Hormone','mL',30,null,null],
+['Dinolytic','Dinoprost','Hormone','mL',30,null,null],
+['Estrumate','Cloprosténol','Hormone','mL',20,null,null],
+['PRID Delta','Progestérone (spirale)','Hormone','dispositif',1,null,null],
+['CIDR','Progestérone (implant)','Hormone','dispositif',1,null,null],
+['Ocytocine','Ocytocine','Hormone','mL',50,0,0],
+// Vaccins
+['Rispoval RS+PI3 IntraNasal','VRS + PI3','Vaccin','dose',1,0,0],
+['Rispoval 4','IBR, BVD, VRS, PI3','Vaccin','dose',1,0,0],
+['Bovilis Bovipast RSP','VRS, PI3, Mannheimia','Vaccin','dose',1,0,0],
+['Bovalto Respi 4','VRS, PI3, BVD, Mannheimia','Vaccin','dose',1,0,0],
+['Bovalto Respi Intranasal','VRS + PI3','Vaccin','dose',1,0,0],
+['Bovilis BVD','BVD','Vaccin','dose',1,0,0],
+['Bovela','BVD types 1 et 2','Vaccin','dose',1,0,0],
+['Hiprabovis IBR Marker Live','IBR','Vaccin','dose',1,0,0],
+['Bovilis IBR Marker Live','IBR','Vaccin','dose',1,0,0],
+['Rotavec Corona','Rotavirus, coronavirus, E. coli','Vaccin','dose',1,0,0],
+['Bovigen Scour','Rotavirus, coronavirus, E. coli','Vaccin','dose',1,0,0],
+['Lactovac C','Rotavirus, coronavirus, E. coli','Vaccin','dose',1,0,0],
+['Bultavo 3','FCO sérotype 3','Vaccin','dose',1,0,0],
+['Bluevac-3','FCO sérotype 3','Vaccin','dose',1,0,0],
+['Syvazul BTV 3','FCO sérotype 3','Vaccin','dose',1,0,0],
+['Bluevac BTV8','FCO sérotype 8','Vaccin','dose',1,0,0],
+['Hepizovac','MHE','Vaccin','dose',1,0,0],
+['Covexin 10','Clostridioses','Vaccin','dose',1,0,0],
+['Miloxan','Clostridioses','Vaccin','dose',1,0,0],
+['Bravoxin 10','Clostridioses','Vaccin','dose',1,0,0],
+['Bovilis Ringvac','Teigne','Vaccin','dose',1,0,0],
+['Startvac','Mammites (S. aureus, E. coli)','Vaccin','dose',1,0,0],
+['Ubac','Mammites (S. uberis)','Vaccin','dose',1,0,0],
+['Heptavac P Plus','Clostridioses + pasteurellose (ovins)','Vaccin','dose',1,0,0],
+['Ovilis Enzovax','Avortement enzootique (ovins)','Vaccin','dose',1,0,0],
+['Toxovax','Toxoplasmose (ovins)','Vaccin','dose',1,0,0],
+['Inmeva','Chlamydia + salmonelle abortive','Vaccin','dose',1,0,0],
+['Coxevac','Fièvre Q','Vaccin','dose',1,0,0],
+['Leptavoid-H','Leptospirose','Vaccin','dose',1,0,0],
+];
+const CATS=['Antibiotique','Intramammaire','Anti-inflammatoire','Antiparasitaire','Antidiarrhéique','Vitamines/minéraux','Hormone','Vaccin','Autre'];
+const MALADIES=['Mammite clinique','Mammite subclinique (cellules)','Tarissement','Broncho-pneumonie (BPIE)','Pneumonie','Diarrhée néonatale','Cryptosporidiose','Coccidiose','Salmonellose','Colibacillose','Omphalite (gros nombril)','Arthrite','Panaris / phlegmon interdigité','Dermatite digitée (Mortellaro)','Boiterie','Piétin','Fièvre de lait (hypocalcémie)','Cétose / acétonémie','Acidose','Météorisation','Déplacement de caillette','Non-délivrance (rétention placentaire)','Métrite','Endométrite','Kyste ovarien','Synchronisation des chaleurs','Vêlage difficile / césarienne','Prolapsus','Strongles gastro-intestinaux','Strongles pulmonaires (dictyocaulose)','Grande douve','Paramphistome','Gale','Poux','Teigne','Myiases','BVD (diarrhée virale bovine)','IBR','FCO (fièvre catarrhale ovine)','MHE (maladie hémorragique épizootique)','Entérotoxémie / clostridioses','Tétanos','Leptospirose','Fièvre Q','Chlamydiose','Kérato-conjonctivite','Otite','Blessure / plaie','Fièvre','Douleur / inflammation','Carence vitamines / oligo-éléments','Autre'];
+const VOIES=['IM','SC','IV','Orale','Intramammaire','Pour-on','Intra-utérine','Intranasale','Locale / cutanée','Vaginale'];
+const ESPECES=['Bovin','Ovin','Caprin','Porcin','Équin','Autre'];
+
+/* ================= DONNÉES ================= */
+const KEY='santeTroupeau.v1';
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const today=()=>new Date().toISOString().slice(0,10);
+function addDays(d,n){const x=new Date(d+'T12:00:00Z');x.setUTCDate(x.getUTCDate()+Number(n||0));return x.toISOString().slice(0,10)}
+function fd(d){if(!d)return'';const[y,m,j]=d.split('-');return`${j}/${m}/${y}`}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const num=v=>{if(v===''||v==null)return null;const n=Number(String(v).replace(',','.'));return isNaN(n)?null:n};
+const fmt=n=>n==null?'':(Math.round(n*100)/100).toLocaleString('fr-FR');
+
+function blank(){return{animaux:[],lots:[],produits:CATALOGUE.map(c=>({id:uid(),nom:c[0],principe:c[1],cat:c[2],unite:c[3],contenance:c[4],attL:c[5],attV:c[6],seuil:null,custom:false})),mouvements:[],soins:[],derniereSauvegarde:null}}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.produits)return s}catch(e){}return blank()}
+let S=load();
+function save(){if(window.CLOUD){CLOUD.push();return}try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){alert("Impossible d'enregistrer dans le navigateur : "+e.message)}}
+function getS(){return S}
+function setS(d){S=d}
+if(!window.FIREBASE_CONFIG)save();
+
+const P=id=>S.produits.find(p=>p.id===id);
+const A=id=>S.animaux.find(a=>a.id===id);
+const L=id=>S.lots.find(l=>l.id===id);
+const prodByName=n=>S.produits.find(p=>p.nom.toLowerCase()===String(n).trim().toLowerCase());
+function stock(pid){return S.mouvements.filter(m=>m.produitId===pid).reduce((s,m)=>s+(m.type==='sortie'?-m.qte:m.qte),0)}
+function suivi(p){return p.seuil!=null||S.mouvements.some(m=>m.produitId===p.id)}
+function peremption(pid){const d=S.mouvements.filter(m=>m.produitId===pid&&m.type==='entree'&&m.peremption).map(m=>m.peremption).sort();return d.find(x=>x>=addDays(today(),-365))||null}
+function attTxt(v){return v==null?'<span class="mute">?</span>':v<0?'<span class="pill r">interdit lait</span>':v+' j'}
+function finAtt(s,l,k){const v=l[k];if(v==null)return null;if(v<0)return'interdit';return addDays(addDays(s.date,(l.duree||1)-1),v)}
+function cible(s){const n=s.animalIds.length;let t='';if(s.lotNom)t=`Lot ${esc(s.lotNom)} (${n})`;else if(n<=3)t=s.animalIds.map(id=>{const a=A(id);return a?esc(a.numero+(a.nom?' '+a.nom:'')):'(supprimé)'}).join(', ');else t=n+' animaux';if(s.autres)t+=(t?' + ':'')+esc(s.autres);return t||'—'}
+
+/* ================= NAVIGATION ================= */
+const TABS=[['bord','Tableau de bord'],['troupeau','Troupeau'],['traitement','Traitements'],['vaccin','Vaccins'],['stock','Stocks'],['produits','Produits'],['bilan','Bilan annuel'],['sauvegarde','Sauvegarde']];
+let tab='bord';
+function go(t){tab=t;render();window.scrollTo(0,0)}
+function render(){
+  document.getElementById('nav').innerHTML=TABS.map(([k,v])=>`<button class="${k===tab?'on':''}" onclick="go('${k}')">${v}</button>`).join('');
+  document.getElementById('dl-prod').innerHTML=S.produits.map(p=>`<option value="${esc(p.nom)}">${esc(p.cat+' — '+p.principe)}</option>`).join('');
+  document.getElementById('dl-mal').innerHTML=MALADIES.map(m=>`<option value="${esc(m)}">`).join('');
+  document.getElementById('dl-vet').innerHTML=[...new Set(S.soins.map(s=>s.veterinaire).filter(Boolean))].map(v=>`<option value="${esc(v)}">`).join('');
+  document.getElementById('app').innerHTML=VIEWS[tab]();
+}
+
+/* ================= MODALE ================= */
+const dlg=document.getElementById('dlg'),dform=document.getElementById('dlgForm');let onSub=null;
+function modal(html,cb){dform.innerHTML=html+`<div class="foot"><button type="button" class="b2" onclick="dlg.close()">Annuler</button><button class="b">Enregistrer</button></div>`;onSub=cb;dlg.showModal()}
+dform.addEventListener('submit',e=>{e.preventDefault();if(onSub&&onSub(new FormData(dform))!==false){dlg.close();save();render()}});
+dlg.addEventListener('close',()=>{if(window.CLOUD&&CLOUD.pending)CLOUD.applyRemote()});
+
+/* ================= ALERTES ================= */
+function alertes(){
+  const stockBas=[],perim=[];
+  S.produits.filter(suivi).forEach(p=>{const q=stock(p.id);if(p.seuil!=null&&q<=p.seuil)stockBas.push({p,q});const pe=peremption(p.id);if(pe&&q>0&&pe<=addDays(today(),60))perim.push({p,pe})});
+  const att={};const t=today();
+  S.soins.forEach(s=>s.lignes.forEach(l=>{['attL','attV'].forEach(k=>{const f=finAtt(s,l,k);if(!f)return;if(f==='interdit'){if(addDays(s.date,(l.duree||1)+6)<t)return}else if(f<t)return;
+    const ids=s.animalIds.length?s.animalIds:['_'+s.id];ids.forEach(id=>{const o=att[id]=att[id]||{id,s,lait:null,viande:null,prods:new Set()};o.prods.add(l.produitNom);const key=k==='attL'?'lait':'viande';if(f==='interdit')o[key]='interdit';else if(o[key]!=='interdit'&&(!o[key]||f>o[key]))o[key]=f})})}));
+  const rappels=S.soins.filter(s=>s.rappel&&s.rappel>=addDays(t,-15)&&s.rappel<=addDays(t,45)&&!S.soins.some(x=>x.type==='vaccin'&&x.date>=s.rappel&&x.id!==s.id&&x.lignes.some(l=>s.lignes.some(m=>m.produitNom===l.produitNom)))).sort((a,b)=>a.rappel<b.rappel?-1:1);
+  return{stockBas,perim,att:Object.values(att),rappels};
+}
+
+/* ================= VUES ================= */
+const VIEWS={};
+VIEWS.bord=()=>{
+  const al=alertes(),y=today().slice(0,4);
+  const nT=S.soins.filter(s=>s.type==='traitement'&&s.date.startsWith(y)).length,nV=S.soins.filter(s=>s.type==='vaccin'&&s.date.startsWith(y)).length;
+  return`<div class="kpis">
+   <div class="kpi"><b>${S.animaux.filter(a=>a.actif!==false).length}</b><span>animaux présents</span></div>
+   <div class="kpi"><b>${nT}</b><span>traitements en ${y}</span></div>
+   <div class="kpi"><b>${nV}</b><span>vaccinations en ${y}</span></div>
+   <div class="kpi"><b style="color:${al.att.length?'var(--bad)':'inherit'}">${al.att.length}</b><span>animaux en délai d'attente</span></div>
+   <div class="kpi"><b style="color:${al.stockBas.length?'var(--warn)':'inherit'}">${al.stockBas.length}</b><span>produits en fin de stock</span></div></div>
+  <div class="row noprint" style="margin-bottom:14px"><button class="b" onclick="formSoin('traitement')">+ Nouveau traitement</button><button class="b" onclick="formSoin('vaccin')">+ Nouvelle vaccination</button><button class="b2" onclick="formEntree()">+ Entrée de stock</button><button class="b2" onclick="formAnimal()">+ Animal</button></div>
+  <div class="card"><h2>⚠️ Fin de stock</h2>${al.stockBas.length?al.stockBas.map(({p,q})=>`<div class="alert w"><b>${esc(p.nom)}</b> : il reste ${fmt(q)} ${esc(p.unite)} (seuil ${fmt(p.seuil)} ${esc(p.unite)})</div>`).join(''):'<p class="mute">Aucun produit sous son seuil d\'alerte.</p>'}
+   ${al.perim.map(({p,pe})=>`<div class="alert ${pe<today()?'r':'w'}"><b>${esc(p.nom)}</b> : ${pe<today()?'périmé depuis le':'péremption le'} ${fd(pe)}</div>`).join('')}</div>
+  <div class="card"><h2>⏳ Délais d'attente en cours</h2>${al.att.length?`<div class="tw"><table><tr><th>Animal</th><th>Produit(s)</th><th>Lait libre le</th><th>Viande libre le</th></tr>${al.att.sort((a,b)=>String(b.viande).localeCompare(String(a.viande))).map(o=>{const a=A(o.id);const nm=a?esc(a.numero+(a.nom?' – '+a.nom:'')):cible(o.s);const c=v=>v==null?'<span class="mute">—</span>':v==='interdit'?'<span class="pill r">interdit (voir ordonnance)</span>':`<span class="pill ${v>=today()?'r':'g'}">${fd(v)}</span>`;return`<tr><td>${nm}</td><td>${esc([...o.prods].join(', '))}</td><td>${c(o.lait)}</td><td>${c(o.viande)}</td></tr>`}).join('')}</table></div>`:'<p class="mute">Aucun animal en délai d\'attente.</p>'}</div>
+  <div class="card"><h2>💉 Rappels de vaccins à prévoir</h2>${al.rappels.length?al.rappels.map(s=>`<div class="alert ${s.rappel<today()?'r':'w'}">${fd(s.rappel)} — ${esc(s.lignes.map(l=>l.produitNom).join(', '))} — ${cible(s)}</div>`).join(''):'<p class="mute">Aucun rappel dans les 45 prochains jours.</p>'}</div>
+  ${backupWarn()}`;
+};
+function backupWarn(){const d=S.derniereSauvegarde;if(d&&d>=addDays(today(),-30))return'';return`<div class="card"><div class="alert w">💾 ${d?'Dernière sauvegarde le '+fd(d):'Aucune sauvegarde faite'} — pensez à exporter vos données (onglet Sauvegarde). Elles sont stockées uniquement dans ce navigateur.</div></div>`}
+
+/* ---------- TROUPEAU ---------- */
+let qA='',fLot='',showOut=false;
+VIEWS.troupeau=()=>{
+  let list=S.animaux.filter(a=>(showOut||a.actif!==false)&&(!fLot||a.lotId===fLot)&&(!qA||(a.numero+' '+(a.nom||'')+' '+(a.race||'')).toLowerCase().includes(qA.toLowerCase())));
+  list.sort((a,b)=>a.numero.localeCompare(b.numero));
+  return`<div class="card"><h2>Lots</h2><div class="row">${S.lots.map(l=>`<span class="pill g">${esc(l.nom)} (${S.animaux.filter(a=>a.lotId===l.id&&a.actif!==false).length}) <a href="#" onclick="formLot('${l.id}');return false">✎</a></span>`).join(' ')||'<span class="mute">Aucun lot.</span>'}<button class="b2 sm" onclick="formLot()">+ Lot</button></div></div>
+  <div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Animaux (${list.length})</h2><div class="row"><button class="b" onclick="formAnimal()">+ Animal</button><button class="b2" onclick="formImport()">Importer une liste</button></div></div>
+  <div class="row" style="margin:10px 0"><input placeholder="Rechercher n°, nom, race…" value="${esc(qA)}" oninput="qA=this.value;render();setTimeout(()=>{const i=document.querySelector('main input');i.focus();i.setSelectionRange(99,99)})">
+  <select onchange="fLot=this.value;render()"><option value="">Tous les lots</option>${S.lots.map(l=>`<option value="${l.id}" ${fLot===l.id?'selected':''}>${esc(l.nom)}</option>`).join('')}</select>
+  <label style="flex-direction:row;align-items:center"><input type="checkbox" ${showOut?'checked':''} onchange="showOut=this.checked;render()"> afficher sortis</label></div>
+  <div class="tw"><table><tr><th>N° national</th><th>Nom</th><th>Espèce</th><th>Race</th><th>Sexe</th><th>Naissance</th><th>Lot</th><th>Soins</th><th></th></tr>
+  ${list.map(a=>`<tr ${a.actif===false?'style="opacity:.5"':''}><td><b>${esc(a.numero)}</b></td><td>${esc(a.nom)}</td><td>${esc(a.espece)}</td><td>${esc(a.race)}</td><td>${esc(a.sexe)}</td><td>${fd(a.naissance)}</td><td>${esc(L(a.lotId)?.nom||'')}</td><td>${S.soins.filter(s=>s.animalIds.includes(a.id)).length}</td><td style="white-space:nowrap"><button class="b2 sm" onclick="ficheAnimal('${a.id}')">Fiche</button> <button class="b2 sm" onclick="formAnimal('${a.id}')">✎</button></td></tr>`).join('')||'<tr><td colspan="9" class="mute">Aucun animal. Ajoutez-les un par un ou importez une liste.</td></tr>'}</table></div></div>`;
+};
+function lotOpts(sel){return`<option value="">— aucun —</option>`+S.lots.map(l=>`<option value="${l.id}" ${sel===l.id?'selected':''}>${esc(l.nom)}</option>`).join('')}
+function formAnimal(id){const a=id?A(id):{espece:'Bovin',actif:true};
+  modal(`<h3>${id?'Modifier':'Ajouter'} un animal</h3><div class="grid">
+  <label>N° national *<input name="numero" required value="${esc(a.numero)}" placeholder="FR 12 3456 7890"></label>
+  <label>Nom / n° travail<input name="nom" value="${esc(a.nom)}"></label>
+  <label>Espèce<select name="espece">${ESPECES.map(e=>`<option ${a.espece===e?'selected':''}>${e}</option>`).join('')}</select></label>
+  <label>Race<input name="race" value="${esc(a.race)}"></label>
+  <label>Sexe<select name="sexe">${['Femelle','Mâle','Mâle castré'].map(e=>`<option ${a.sexe===e?'selected':''}>${e}</option>`).join('')}</select></label>
+  <label>Date de naissance<input type="date" name="naissance" value="${esc(a.naissance)}"></label>
+  <label>Lot<select name="lotId">${lotOpts(a.lotId)}</select></label>
+  <label>Statut<select name="actif"><option value="1">Présent</option><option value="0" ${a.actif===false?'selected':''}>Sorti (vendu, mort…)</option></select></label></div>
+  ${id?`<p><button type="button" class="del" onclick="if(confirm('Supprimer cet animal ? (ses soins restent dans l\\'historique)')){S.animaux=S.animaux.filter(x=>x.id!=='${id}');save();dlg.close();render()}">Supprimer l'animal</button></p>`:''}`,f=>{
+    const o={numero:f.get('numero').trim(),nom:f.get('nom').trim(),espece:f.get('espece'),race:f.get('race').trim(),sexe:f.get('sexe'),naissance:f.get('naissance'),lotId:f.get('lotId'),actif:f.get('actif')==='1'};
+    if(S.animaux.some(x=>x.numero===o.numero&&x.id!==id)){alert('Ce numéro existe déjà.');return false}
+    if(id)Object.assign(a,o);else S.animaux.push({id:uid(),...o});});}
+function formLot(id){const l=id?L(id):{nom:''};const membres=S.animaux.filter(a=>a.actif!==false);
+  modal(`<h3>${id?'Modifier le':'Nouveau'} lot</h3><label>Nom du lot<input name="nom" required value="${esc(l.nom)}" placeholder="Génisses 2025, Vaches laitières…"></label>
+  <p class="hint">Cochez les animaux du lot :</p><div class="anlist">${membres.map(a=>`<label><input type="checkbox" name="an" value="${a.id}" ${id&&a.lotId===id?'checked':''}>${esc(a.numero)} ${esc(a.nom||'')}</label>`).join('')||'<span class="mute">Aucun animal enregistré.</span>'}</div>
+  ${id?`<p><button type="button" class="del" onclick="if(confirm('Supprimer ce lot ?')){S.lots=S.lots.filter(x=>x.id!=='${id}');S.animaux.forEach(a=>{if(a.lotId==='${id}')a.lotId=''});save();dlg.close();render()}">Supprimer le lot</button></p>`:''}`,f=>{
+    let lid=id;if(id)l.nom=f.get('nom').trim();else{lid=uid();S.lots.push({id:lid,nom:f.get('nom').trim()})}
+    const sel=f.getAll('an');S.animaux.forEach(a=>{if(sel.includes(a.id))a.lotId=lid;else if(a.lotId===lid)a.lotId=''});});}
+function formImport(){modal(`<h3>Importer une liste d'animaux</h3><p class="hint">Collez une ligne par animal (depuis Excel ou un fichier CSV). Colonnes dans cet ordre, séparées par ; ou tabulation :<br><b>N° national ; Nom ; Espèce ; Race ; Sexe (F/M) ; Date naissance (jj/mm/aaaa) ; Lot</b><br>Seul le n° est obligatoire. Les numéros déjà présents sont mis à jour.</p>
+  <textarea name="txt" style="width:100%;min-height:220px" placeholder="FR1234567890;Marguerite;Bovin;Prim'Holstein;F;12/03/2021;Vaches laitières"></textarea>`,f=>{
+  let n=0;f.get('txt').split(/\r?\n/).forEach(line=>{const c=line.split(/;|\t/).map(x=>x.trim());if(!c[0]||/^n[°o]/i.test(c[0]))return;
+    let lotId='';if(c[6]){let l=S.lots.find(x=>x.nom.toLowerCase()===c[6].toLowerCase());if(!l){l={id:uid(),nom:c[6]};S.lots.push(l)}lotId=l.id}
+    let d='';if(c[5]){const m=c[5].match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);if(m){let y=m[3].length===2?'20'+m[3]:m[3];d=`${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`}else if(/^\d{4}-\d{2}-\d{2}$/.test(c[5]))d=c[5]}
+    const sx=/^m/i.test(c[4]||'')?'Mâle':'Femelle';const esp=ESPECES.find(e=>e.toLowerCase()===(c[2]||'').toLowerCase())||'Bovin';
+    const o={numero:c[0],nom:c[1]||'',espece:esp,race:c[3]||'',sexe:sx,naissance:d,lotId,actif:true};const ex=S.animaux.find(a=>a.numero===o.numero);
+    if(ex)Object.assign(ex,o);else S.animaux.push({id:uid(),...o});n++});alert(n+' animal(aux) importé(s).');});}
+function ficheAnimal(id){const a=A(id);const ss=S.soins.filter(s=>s.animalIds.includes(id)).sort((x,y)=>y.date.localeCompare(x.date));
+  modal(`<h3>${esc(a.numero)} ${esc(a.nom||'')}</h3><p class="mute">${esc(a.espece)} · ${esc(a.race||'')} · ${esc(a.sexe||'')} · né(e) le ${fd(a.naissance)||'?'} · lot ${esc(L(a.lotId)?.nom||'—')}</p>
+  <div class="tw"><table><tr><th>Date</th><th>Type</th><th>Motif</th><th>Produits</th><th>Ordonnance</th></tr>${ss.map(s=>`<tr><td>${fd(s.date)}</td><td>${s.type==='vaccin'?'Vaccin':'Traitement'}</td><td>${esc(s.motif)}</td><td>${s.lignes.map(l=>esc(l.produitNom)+' '+fmt(l.dose)+' '+esc(l.unite)).join('<br>')}</td><td>${esc(s.ordonnance)}</td></tr>`).join('')||'<tr><td colspan="5" class="mute">Aucun soin.</td></tr>'}</table></div>`,()=>{});
+  dform.querySelector('.foot .b').style.display='none';}
+
+/* ---------- TRAITEMENTS / VACCINS ---------- */
+let qS='';
+function listeSoins(type){
+  const list=S.soins.filter(s=>s.type===type&&(!qS||JSON.stringify([s.motif,s.ordonnance,s.veterinaire,s.lignes.map(l=>l.produitNom),s.animalIds.map(i=>A(i)?.numero),s.lotNom,s.autres]).toLowerCase().includes(qS.toLowerCase()))).sort((a,b)=>b.date.localeCompare(a.date));
+  return`<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">${type==='vaccin'?'Vaccinations':'Traitements'} (${list.length})</h2><button class="b" onclick="formSoin('${type}')">+ ${type==='vaccin'?'Nouvelle vaccination':'Nouveau traitement'}</button></div>
+  <div class="row" style="margin:10px 0"><input placeholder="Rechercher animal, produit, maladie, ordonnance…" value="${esc(qS)}" oninput="qS=this.value;render();setTimeout(()=>{const i=document.querySelector('main input');i.focus();i.setSelectionRange(99,99)})" style="flex:1"></div>
+  <div class="tw"><table><tr><th>Date</th><th>Animal / lot</th><th>${type==='vaccin'?'Maladie visée':'Motif'}</th><th>Produits · dose · durée</th><th>Ordonnance</th><th>${type==='vaccin'?'Rappel':'Fin attente lait / viande'}</th><th></th></tr>
+  ${list.map(s=>`<tr><td>${fd(s.date)}</td><td>${cible(s)}</td><td>${esc(s.motif)}</td><td>${s.lignes.map(l=>`<b>${esc(l.produitNom)}</b> · ${fmt(l.dose)} ${esc(l.unite)} ${esc(l.voie||'')} · ${l.duree||1} j`).join('<br>')}</td><td>${esc(s.ordonnance)}${s.veterinaire?'<br><span class="mute">'+esc(s.veterinaire)+'</span>':''}</td>
+  <td>${type==='vaccin'?fd(s.rappel):s.lignes.map(l=>{const a=finAtt(s,l,'attL'),b=finAtt(s,l,'attV');const f=v=>v==null?'?':v==='interdit'?'interdit':fd(v);return f(a)+' / '+f(b)}).join('<br>')}</td>
+  <td style="white-space:nowrap"><button class="b2 sm" onclick="formSoin('${type}','${s.id}')">✎</button> <button class="b2 sm" title="Dupliquer" onclick="formSoin('${type}','${s.id}',true)">⧉</button></td></tr>`).join('')||'<tr><td colspan="7" class="mute">Aucun enregistrement.</td></tr>'}</table></div></div>`;
+}
+VIEWS.traitement=()=>listeSoins('traitement');
+VIEWS.vaccin=()=>listeSoins('vaccin');
+
+function ligneHTML(l={}){const p=l.produitId?P(l.produitId):null;
+  return`<div class="ligne"><div class="grid">
+  <label style="grid-column:span 2">Produit (tapez pour chercher) *<input class="lp" list="dl-prod" value="${esc(l.produitNom||'')}" onchange="prodChoisi(this)" required></label>
+  <label>Dose par animal<input class="ld" inputmode="decimal" value="${l.dose??''}" oninput="recalc()" required></label>
+  <label>Unité<input class="lu" value="${esc(l.unite||p?.unite||'mL')}"></label>
+  <label>Voie<select class="lv">${VOIES.map(v=>`<option ${l.voie===v?'selected':''}>${v}</option>`).join('')}</select></label>
+  <label>Durée du traitement (jours)<input class="ldu" type="number" min="1" value="${l.duree||1}" oninput="recalc()"></label>
+  <label>Administrations / jour<input class="lf" type="number" min="1" step="any" value="${l.freq||1}" oninput="recalc()"></label>
+  <label>Attente lait (j) <span class="hint">-1 = interdit</span><input class="lal" inputmode="numeric" value="${l.attL??''}"></label>
+  <label>Attente viande (j)<input class="lav" inputmode="numeric" value="${l.attV??''}"></label>
+  <label>Quantité à sortir du stock<input class="lq" inputmode="decimal" value="${l.qte??''}" oninput="this.dataset.m=1" ${l.qte!=null?'data-m="1"':''}></label>
+  </div><div class="row" style="justify-content:space-between"><div class="calc lc"></div><button type="button" class="del sm" onclick="this.closest('.ligne').remove();recalc()">Retirer ce produit</button></div></div>`}
+function prodChoisi(inp){const p=prodByName(inp.value);const box=inp.closest('.ligne');if(!p){box.querySelector('.lc').textContent='Produit inconnu : il sera ajouté au catalogue.';return}
+  box.querySelector('.lu').value=p.unite;box.querySelector('.lal').value=p.attL??'';box.querySelector('.lav').value=p.attV??'';
+  if(p.cat==='Intramammaire')box.querySelector('.lv').value='Intramammaire';else if(p.cat==='Vaccin')box.querySelector('.lv').value=p.nom.match(/intra ?nasal/i)?'Intranasale':'SC';
+  if(p.unite==='dose'||p.unite==='injecteur'||p.unite==='bolus'||p.unite==='dispositif'){const d=box.querySelector('.ld');if(!d.value)d.value=1}
+  delete box.querySelector('.lq').dataset.m;recalc()}
+function nbAnimaux(){return dform.querySelectorAll('input[name=an]:checked').length+(dform.querySelector('[name=autresN]')?Number(dform.querySelector('[name=autresN]').value||0):0)}
+function recalc(){const n=nbAnimaux();const c=dform.querySelector('#nbsel');if(c)c.textContent=n+' animal(aux) sélectionné(s)';
+  dform.querySelectorAll('.ligne').forEach(b=>{const d=num(b.querySelector('.ld').value)||0,du=num(b.querySelector('.ldu').value)||1,fr=num(b.querySelector('.lf').value)||1;const tot=d*du*fr*n;const q=b.querySelector('.lq');if(!q.dataset.m)q.value=tot?Math.round(tot*100)/100:'';
+    const p=prodByName(b.querySelector('.lp').value);b.querySelector('.lc').innerHTML=p?`${fmt(d)} ${esc(b.querySelector('.lu').value)} × ${du} j × ${fr}/j × ${n} animal(aux) = <b>${fmt(tot)} ${esc(p.unite)}</b> · stock actuel : ${fmt(stock(p.id))} ${esc(p.unite)}`:''})}
+function cocherLot(lid){dform.querySelectorAll('input[name=an]').forEach(i=>{if(A(i.value)?.lotId===lid)i.checked=true});dform.querySelector('[name=lotId]').value=lid;recalc()}
+function filtreAn(v){dform.querySelectorAll('.anlist label').forEach(l=>l.style.display=l.textContent.toLowerCase().includes(v.toLowerCase())?'':'none')}
+
+function formSoin(type,id,dup){
+  const s0=id?S.soins.find(x=>x.id===id):null;const s=s0?JSON.parse(JSON.stringify(s0)):{date:today(),animalIds:[],lignes:[{}]};
+  if(dup){s.date=today();s.ordonnance=s.ordonnance}
+  const isV=type==='vaccin';const an=S.animaux.filter(a=>a.actif!==false||s.animalIds.includes(a.id)).sort((a,b)=>a.numero.localeCompare(b.numero));
+  const lid=s.lotNom?S.lots.find(l=>l.nom===s.lotNom)?.id||'':'';
+  modal(`<h3>${id&&!dup?'Modifier':'Nouvelle'} ${isV?'vaccination':'traitement'}</h3>
+  <div class="grid"><label>Date ${isV?'de vaccination':'de début'} *<input type="date" name="date" required value="${s.date}"></label>
+  <label>${isV?'Maladie visée':'Motif / maladie'} *<input name="motif" list="dl-mal" required value="${esc(s.motif||'')}" placeholder="Tapez pour chercher"></label>
+  <label>N° d'ordonnance<input name="ordonnance" value="${esc(s.ordonnance||'')}"></label>
+  <label>Date ordonnance<input type="date" name="dateOrd" value="${esc(s.dateOrd||'')}"></label>
+  <label>Vétérinaire prescripteur<input name="veterinaire" list="dl-vet" value="${esc(s.veterinaire||'')}"></label>
+  <label>Administré par<input name="intervenant" value="${esc(s.intervenant||'')}"></label>
+  ${isV?`<label>Date de rappel<input type="date" name="rappel" value="${esc(s.rappel||'')}"></label>`:''}</div>
+  <h4 style="margin:16px 0 6px">Animaux traités — <span id="nbsel" class="mute"></span></h4>
+  <input type="hidden" name="lotId" value="${lid}">
+  <div class="row" style="margin-bottom:6px">${S.lots.map(l=>`<button type="button" class="b2 sm" onclick="cocherLot('${l.id}')">Cocher lot « ${esc(l.nom)} »</button>`).join('')}
+  <button type="button" class="b2 sm" onclick="dform.querySelectorAll('input[name=an]').forEach(i=>i.checked=false);dform.querySelector('[name=lotId]').value='';recalc()">Tout décocher</button>
+  <input placeholder="filtrer…" oninput="filtreAn(this.value)" style="width:140px"></div>
+  <div class="anlist">${an.map(a=>`<label><input type="checkbox" name="an" value="${a.id}" ${s.animalIds.includes(a.id)?'checked':''} onchange="recalc()">${esc(a.numero)} ${esc(a.nom||'')}</label>`).join('')||'<span class="mute">Aucun animal enregistré (onglet Troupeau) — utilisez le champ ci-dessous.</span>'}</div>
+  <div class="grid" style="margin-top:6px"><label style="grid-column:span 2">Autres animaux non enregistrés (n°)<input name="autres" value="${esc(s.autres||'')}"></label><label>Nombre de ces animaux<input type="number" min="0" name="autresN" value="${s.autresN||0}" oninput="recalc()"></label></div>
+  <h4 style="margin:16px 0 6px">Produits utilisés</h4><div id="lignes">${s.lignes.map(ligneHTML).join('')}</div>
+  <button type="button" class="b2" onclick="document.getElementById('lignes').insertAdjacentHTML('beforeend',ligneHTML());recalc()">+ Ajouter un produit</button>
+  <p class="hint">La quantité sortie du stock est calculée automatiquement (dose × durée × administrations × nombre d'animaux) ; vous pouvez la corriger. Délais d'attente pré-remplis à titre indicatif : <b>vérifiez toujours l'ordonnance</b>.</p>
+  <label style="margin-top:8px">Observations<textarea name="notes">${esc(s.notes||'')}</textarea></label>
+  ${id&&!dup?`<p><button type="button" class="del" onclick="supprSoin('${id}')">Supprimer cet enregistrement (le stock sera recrédité)</button></p>`:''}`,f=>{
+    const ids=f.getAll('an');if(!ids.length&&!f.get('autres').trim()){alert('Sélectionnez au moins un animal.');return false}
+    const lignes=[];let err=false;
+    dform.querySelectorAll('.ligne').forEach(b=>{const nom=b.querySelector('.lp').value.trim();if(!nom)return;let p=prodByName(nom);
+      if(!p){p={id:uid(),nom,principe:'',cat:isV?'Vaccin':'Autre',unite:b.querySelector('.lu').value||'mL',contenance:null,attL:num(b.querySelector('.lal').value),attV:num(b.querySelector('.lav').value),seuil:null,custom:true};S.produits.push(p)}
+      const dose=num(b.querySelector('.ld').value);if(dose==null){err=true}
+      lignes.push({produitId:p.id,produitNom:p.nom,dose,unite:b.querySelector('.lu').value,voie:b.querySelector('.lv').value,duree:num(b.querySelector('.ldu').value)||1,freq:num(b.querySelector('.lf').value)||1,attL:num(b.querySelector('.lal').value),attV:num(b.querySelector('.lav').value),qte:num(b.querySelector('.lq').value)||0})});
+    if(err){alert('Indiquez la dose pour chaque produit.');return false}
+    if(!lignes.length){alert('Ajoutez au moins un produit.');return false}
+    const lotId=f.get('lotId');const lot=L(lotId);const lotMembers=lot?S.animaux.filter(a=>a.lotId===lotId&&a.actif!==false).map(a=>a.id):[];
+    const lotNom=lot&&lotMembers.length&&lotMembers.every(i=>ids.includes(i))&&ids.length===lotMembers.length?lot.nom:'';
+    const o={type,date:f.get('date'),motif:f.get('motif').trim(),ordonnance:f.get('ordonnance').trim(),dateOrd:f.get('dateOrd'),veterinaire:f.get('veterinaire').trim(),intervenant:f.get('intervenant').trim(),rappel:f.get('rappel')||'',animalIds:ids,lotNom,autres:f.get('autres').trim(),autresN:num(f.get('autresN'))||0,lignes,notes:f.get('notes').trim()};
+    let sid;if(id&&!dup){sid=id;Object.assign(s0,o)}else{sid=uid();S.soins.push({id:sid,...o})}
+    S.mouvements=S.mouvements.filter(m=>m.soinId!==sid);
+    lignes.forEach(l=>{if(l.qte>0)S.mouvements.push({id:uid(),date:o.date,produitId:l.produitId,type:'sortie',qte:l.qte,soinId:sid,ref:(isV?'Vaccin':'Traitement')+' – '+o.motif})});
+    const bas=lignes.map(l=>P(l.produitId)).filter(p=>p.seuil!=null&&stock(p.id)<=p.seuil);
+    if(bas.length)setTimeout(()=>alert('⚠️ Fin de stock :\n'+bas.map(p=>`${p.nom} : reste ${fmt(stock(p.id))} ${p.unite}`).join('\n')),100);
+  });
+  recalc();
+}
+function supprSoin(id){if(!confirm('Supprimer cet enregistrement ?'))return;S.soins=S.soins.filter(s=>s.id!==id);S.mouvements=S.mouvements.filter(m=>m.soinId!==id);save();dlg.close();render()}
+
+/* ---------- STOCKS ---------- */
+VIEWS.stock=()=>{
+  const ps=S.produits.filter(suivi).sort((a,b)=>a.nom.localeCompare(b.nom));
+  const mv=[...S.mouvements].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,60);
+  return`<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Stock de la pharmacie</h2><div class="row"><button class="b" onclick="formEntree()">+ Entrée de produits</button><button class="b2" onclick="formInventaire()">Saisir / corriger un stock</button></div></div>
+  <p class="hint">Pour commencer : utilisez « Saisir / corriger un stock » pour entrer votre stock actuel, puis « Entrée de produits » à chaque livraison. Les traitements déduisent le stock automatiquement.</p>
+  <div class="tw"><table><tr><th>Produit</th><th>Catégorie</th><th>En stock</th><th>Seuil d'alerte</th><th>Péremption</th><th>État</th><th></th></tr>
+  ${ps.map(p=>{const q=stock(p.id),pe=peremption(p.id);const st=q<=0?'<span class="pill r">épuisé</span>':p.seuil!=null&&q<=p.seuil?'<span class="pill w">fin de stock</span>':'<span class="pill g">OK</span>';
+   const cond=p.contenance&&p.contenance>1?` <span class="mute">(≈ ${fmt(q/p.contenance)} × ${fmt(p.contenance)} ${esc(p.unite)})</span>`:'';
+   return`<tr><td><b>${esc(p.nom)}</b><br><span class="mute">${esc(p.principe)}</span></td><td>${esc(p.cat)}</td><td>${fmt(q)} ${esc(p.unite)}${cond}</td><td>${p.seuil!=null?fmt(p.seuil)+' '+esc(p.unite):'<span class="mute">—</span>'}</td><td>${pe?`<span class="pill ${pe<today()?'r':pe<=addDays(today(),60)?'w':''}">${fd(pe)}</span>`:''}</td><td>${st}</td><td style="white-space:nowrap"><button class="b2 sm" onclick="formEntree('${p.id}')">+ Entrée</button> <button class="b2 sm" onclick="formInventaire('${p.id}')">✎</button></td></tr>`}).join('')||'<tr><td colspan="7" class="mute">Aucun produit en stock pour l\'instant.</td></tr>'}</table></div></div>
+  <div class="card"><h2>Derniers mouvements</h2><div class="tw"><table><tr><th>Date</th><th>Produit</th><th>Mouvement</th><th>Quantité</th><th>Détail</th><th></th></tr>
+  ${mv.map(m=>{const p=P(m.produitId);return`<tr><td>${fd(m.date)}</td><td>${esc(p?.nom||'?')}</td><td>${m.type==='entree'?'<span class="pill g">Entrée</span>':m.type==='sortie'?'<span class="pill w">Sortie</span>':'<span class="pill">Inventaire</span>'}</td><td>${m.type==='sortie'?'-':m.qte>0?'+':''}${fmt(m.qte)} ${esc(p?.unite||'')}</td><td>${esc(m.ref||'')}${m.lotFab?' · lot '+esc(m.lotFab):''}${m.peremption?' · pér. '+fd(m.peremption):''}${m.fournisseur?' · '+esc(m.fournisseur):''}</td><td>${m.soinId?'':`<button class="del sm" onclick="if(confirm('Supprimer ce mouvement ?')){S.mouvements=S.mouvements.filter(x=>x.id!=='${m.id}');save();render()}">✕</button>`}</td></tr>`}).join('')||'<tr><td colspan="6" class="mute">Aucun mouvement.</td></tr>'}</table></div></div>`;
+};
+function prodSelect(sel){return`<select name="pid" required onchange="majCond(this)"><option value="">— choisir —</option>${CATS.map(c=>`<optgroup label="${c}">${S.produits.filter(p=>p.cat===c).sort((a,b)=>a.nom.localeCompare(b.nom)).map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>${esc(p.nom)}</option>`).join('')}</optgroup>`).join('')}</select>`}
+function majCond(s){const p=P(s.value);if(!p)return;const c=dform.querySelector('[name=cont]');if(c){c.value=p.contenance||1;dform.querySelector('#uu').textContent=p.unite}const sv=dform.querySelector('[name=seuil]');if(sv)sv.value=p.seuil??'';const u=dform.querySelector('#uu2');if(u)u.textContent=p.unite;const cur=dform.querySelector('#cur');if(cur)cur.textContent='Stock enregistré : '+fmt(stock(p.id))+' '+p.unite;calcE()}
+function calcE(){const n=num(dform.querySelector('[name=nb]')?.value)||0,c=num(dform.querySelector('[name=cont]')?.value)||0;const p=P(dform.querySelector('[name=pid]').value);const o=dform.querySelector('#tot');if(o)o.innerHTML=p?`Total ajouté : <b>${fmt(n*c)} ${esc(p.unite)}</b> → nouveau stock ${fmt(stock(p.id)+n*c)} ${esc(p.unite)}`:''}
+function formEntree(pid){const p=pid?P(pid):null;
+  modal(`<h3>Entrée de produits (livraison / achat)</h3><div class="grid">
+  <label style="grid-column:span 2">Produit *${prodSelect(pid)}</label>
+  <label>Date<input type="date" name="date" value="${today()}"></label>
+  <label>Nombre de conditionnements *<input name="nb" inputmode="decimal" required value="1" oninput="calcE()"></label>
+  <label>Contenance par conditionnement (<span id="uu">${esc(p?.unite||'')}</span>) *<input name="cont" inputmode="decimal" required value="${p?.contenance||1}" oninput="calcE()"></label>
+  <label>N° de lot fabricant<input name="lotFab"></label>
+  <label>Date de péremption<input type="date" name="peremption"></label>
+  <label>Fournisseur / vétérinaire<input name="fournisseur"></label>
+  <label>N° ordonnance / facture<input name="ref"></label>
+  <label>Seuil d'alerte (<span id="uu2">${esc(p?.unite||'')}</span>)<input name="seuil" inputmode="decimal" value="${p?.seuil??''}" placeholder="ex. 50"></label></div>
+  <div class="calc" id="tot"></div><p class="hint">Exemple : 3 flacons de 250 mL → nombre = 3, contenance = 250. Un vaccin de 10 doses → contenance = 10 (unité « dose »). Le produit n'est pas dans la liste ? Ajoutez-le dans l'onglet Produits.</p>`,f=>{
+    const p=P(f.get('pid'));if(!p)return false;const q=(num(f.get('nb'))||0)*(num(f.get('cont'))||0);if(q<=0){alert('Quantité invalide');return false}
+    p.contenance=num(f.get('cont'));p.seuil=num(f.get('seuil'));
+    S.mouvements.push({id:uid(),date:f.get('date')||today(),produitId:p.id,type:'entree',qte:q,lotFab:f.get('lotFab').trim(),peremption:f.get('peremption'),fournisseur:f.get('fournisseur').trim(),ref:f.get('ref').trim()||`${f.get('nb')} × ${f.get('cont')} ${p.unite}`})});
+  calcE();}
+function formInventaire(pid){const p=pid?P(pid):null;
+  modal(`<h3>Saisir / corriger le stock d'un produit</h3><div class="grid">
+  <label style="grid-column:span 2">Produit *${prodSelect(pid)}</label>
+  <label>Quantité réellement en stock (<span id="uu2">${esc(p?.unite||'')}</span>) *<input name="q" inputmode="decimal" required></label>
+  <label>Seuil d'alerte<input name="seuil" inputmode="decimal" value="${p?.seuil??''}"></label>
+  <label>Date de péremption<input type="date" name="peremption"></label></div>
+  <p class="hint" id="cur">${p?'Stock enregistré : '+fmt(stock(p.id))+' '+esc(p.unite):''}</p><p class="hint">Indiquez la quantité totale dans l'unité du produit (ex. 2 flacons de 100 mL + un entamé à moitié = 250 mL).</p>`,f=>{
+    const p=P(f.get('pid'));if(!p)return false;const q=num(f.get('q'));if(q==null)return false;const d=q-stock(p.id);p.seuil=num(f.get('seuil'));
+    if(d!==0||f.get('peremption'))S.mouvements.push({id:uid(),date:today(),produitId:p.id,type:d===0&&f.get('peremption')?'entree':'ajust',qte:d,peremption:f.get('peremption'),ref:'Inventaire'})});}
+
+/* ---------- PRODUITS ---------- */
+let qP='',fC='';
+VIEWS.produits=()=>{const list=S.produits.filter(p=>(!fC||p.cat===fC)&&(!qP||(p.nom+' '+p.principe).toLowerCase().includes(qP.toLowerCase()))).sort((a,b)=>a.nom.localeCompare(b.nom));
+  return`<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Catalogue des produits (${list.length})</h2><button class="b" onclick="formProduit()">+ Ajouter un produit</button></div>
+  <div class="alert w" style="margin:10px 0">Les délais d'attente pré-remplis sont <b>indicatifs</b> et peuvent changer selon la dose, la voie et l'espèce. La référence reste <b>l'ordonnance et la notice (RCP)</b> — le vétérinaire peut imposer un délai différent. « ? » = à compléter. Base officielle : <a href="https://med-vet.fr" target="_blank" rel="noopener">med-vet.fr</a> (ANMV).</div>
+  <div class="row" style="margin-bottom:10px"><input placeholder="Rechercher nom ou molécule…" value="${esc(qP)}" oninput="qP=this.value;render();setTimeout(()=>{const i=document.querySelector('main input');i.focus();i.setSelectionRange(99,99)})" style="flex:1"><select onchange="fC=this.value;render()"><option value="">Toutes catégories</option>${CATS.map(c=>`<option ${fC===c?'selected':''}>${c}</option>`).join('')}</select></div>
+  <div class="tw"><table><tr><th>Produit</th><th>Principe actif</th><th>Catégorie</th><th>Unité</th><th>Conditionnement</th><th>Attente lait</th><th>Attente viande</th><th></th></tr>
+  ${list.map(p=>`<tr><td><b>${esc(p.nom)}</b>${p.custom?' <span class="pill g">perso</span>':''}</td><td>${esc(p.principe)}</td><td>${esc(p.cat)}</td><td>${esc(p.unite)}</td><td>${p.contenance?fmt(p.contenance)+' '+esc(p.unite):''}</td><td>${attTxt(p.attL)}</td><td>${attTxt(p.attV)}</td><td><button class="b2 sm" onclick="formProduit('${p.id}')">✎</button></td></tr>`).join('')}</table></div></div>`};
+function formProduit(id){const p=id?P(id):{cat:'Antibiotique',unite:'mL'};
+  modal(`<h3>${id?'Modifier':'Ajouter'} un produit</h3><div class="grid">
+  <label style="grid-column:span 2">Nom commercial *<input name="nom" required value="${esc(p.nom)}"></label>
+  <label>Principe actif<input name="principe" value="${esc(p.principe)}"></label>
+  <label>Catégorie<select name="cat">${CATS.map(c=>`<option ${p.cat===c?'selected':''}>${c}</option>`).join('')}</select></label>
+  <label>Unité de stock<input name="unite" list="dl-u" value="${esc(p.unite)}"><datalist id="dl-u"><option>mL</option><option>g</option><option>dose</option><option>comprimé</option><option>injecteur</option><option>bolus</option><option>dispositif</option><option>flacon</option></datalist></label>
+  <label>Contenance d'un conditionnement<input name="contenance" inputmode="decimal" value="${p.contenance??''}"></label>
+  <label>Attente lait (j, -1 = interdit)<input name="attL" inputmode="numeric" value="${p.attL??''}"></label>
+  <label>Attente viande (j)<input name="attV" inputmode="numeric" value="${p.attV??''}"></label>
+  <label>Seuil d'alerte stock<input name="seuil" inputmode="decimal" value="${p.seuil??''}"></label></div>
+  ${id&&!S.mouvements.some(m=>m.produitId===id)&&!S.soins.some(s=>s.lignes.some(l=>l.produitId===id))?`<p><button type="button" class="del" onclick="if(confirm('Supprimer ce produit ?')){S.produits=S.produits.filter(x=>x.id!=='${id}');save();dlg.close();render()}">Supprimer le produit</button></p>`:''}`,f=>{
+    const o={nom:f.get('nom').trim(),principe:f.get('principe').trim(),cat:f.get('cat'),unite:f.get('unite').trim()||'mL',contenance:num(f.get('contenance')),attL:num(f.get('attL')),attV:num(f.get('attV')),seuil:num(f.get('seuil'))};
+    if(S.produits.some(x=>x.nom.toLowerCase()===o.nom.toLowerCase()&&x.id!==id)){alert('Ce nom existe déjà.');return false}
+    if(id){Object.assign(p,o);S.soins.forEach(s=>s.lignes.forEach(l=>{if(l.produitId===id)l.produitNom=o.nom}))}else S.produits.push({id:uid(),...o,custom:true})});}
+
+/* ---------- BILAN ---------- */
+let bY=today().slice(0,4),bT='';
+function bilanRows(){return S.soins.filter(s=>s.date.startsWith(bY)&&(!bT||s.type===bT)).sort((a,b)=>a.date.localeCompare(b.date))}
+VIEWS.bilan=()=>{
+  const yrs=[...new Set([today().slice(0,4),...S.soins.map(s=>s.date.slice(0,4))])].sort().reverse();
+  const rows=bilanRows();const motifs={},prods={};let nbAn=0;
+  rows.forEach(s=>{const n=s.animalIds.length+(s.autresN||0);nbAn+=n;motifs[s.motif]=(motifs[s.motif]||0)+1;s.lignes.forEach(l=>{const k=l.produitNom;prods[k]=prods[k]||{q:0,u:P(l.produitId)?.unite||l.unite,n:0,cat:P(l.produitId)?.cat||''};prods[k].q+=l.qte||0;prods[k].n+=n})});
+  const ab=Object.entries(prods).filter(([k,v])=>v.cat==='Antibiotique'||v.cat==='Intramammaire').reduce((s,[k,v])=>s+v.n,0);
+  return`<div class="card noprint"><div class="row"><label>Année<select onchange="bY=this.value;render()">${yrs.map(y=>`<option ${y===bY?'selected':''}>${y}</option>`).join('')}</select></label>
+  <label>Type<select onchange="bT=this.value;render()"><option value="">Traitements + vaccins</option><option value="traitement" ${bT==='traitement'?'selected':''}>Traitements</option><option value="vaccin" ${bT==='vaccin'?'selected':''}>Vaccins</option></select></label>
+  <button class="b" onclick="print()">🖨 Imprimer / PDF</button><button class="b2" onclick="exportCSV()">Exporter Excel (CSV)</button></div></div>
+  <div class="card"><h2>Bilan sanitaire ${bY} ${bT==='vaccin'?'— vaccinations':bT==='traitement'?'— traitements':''}</h2>
+  <p class="mute">Édité le ${fd(today())} · ${rows.length} intervention(s) · ${nbAn} administrations animal · dont ${ab} avec antibiotiques</p>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))"><div><h4>Par motif</h4><table>${Object.entries(motifs).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join('')||'<tr><td class="mute">—</td></tr>'}</table></div>
+  <div><h4>Produits consommés</h4><table><tr><th>Produit</th><th>Animaux</th><th>Quantité</th></tr>${Object.entries(prods).sort().map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v.n}</td><td>${fmt(v.q)} ${esc(v.u)}</td></tr>`).join('')||'<tr><td class="mute" colspan="3">—</td></tr>'}</table></div></div>
+  <h4>Registre détaillé</h4><div class="tw"><table><tr><th>Date</th><th>Type</th><th>Animaux</th><th>Motif</th><th>Produit</th><th>Dose</th><th>Voie</th><th>Durée</th><th>Ordonnance</th><th>Vétérinaire</th><th>Fin att. lait</th><th>Fin att. viande</th></tr>
+  ${rows.map(s=>s.lignes.map((l,i)=>{const f=v=>v==null?'':v==='interdit'?'interdit':fd(v);return`<tr>${i===0?`<td rowspan="${s.lignes.length}">${fd(s.date)}</td><td rowspan="${s.lignes.length}">${s.type==='vaccin'?'Vaccin':'Trait.'}</td><td rowspan="${s.lignes.length}">${s.lotNom?'Lot '+esc(s.lotNom)+'<br>':''}${s.animalIds.map(id=>esc(A(id)?.numero||'?')).join(', ')}${s.autres?', '+esc(s.autres):''}</td><td rowspan="${s.lignes.length}">${esc(s.motif)}</td>`:''}<td>${esc(l.produitNom)}</td><td>${fmt(l.dose)} ${esc(l.unite)}${l.freq>1?' ×'+l.freq+'/j':''}</td><td>${esc(l.voie)}</td><td>${l.duree} j</td>${i===0?`<td rowspan="${s.lignes.length}">${esc(s.ordonnance)}</td><td rowspan="${s.lignes.length}">${esc(s.veterinaire)}</td>`:''}<td>${f(finAtt(s,l,'attL'))}</td><td>${f(finAtt(s,l,'attV'))}</td></tr>`}).join('')).join('')||'<tr><td colspan="12" class="mute">Aucun enregistrement pour cette période.</td></tr>'}</table></div></div>`};
+function dl(name,content,type){const b=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function exportCSV(){const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';const h=['Date','Type','Animaux','Lot','Motif','Produit','Dose','Unité','Voie','Durée (j)','Admin/jour','Quantité','Ordonnance','Date ordonnance','Vétérinaire','Administré par','Fin attente lait','Fin attente viande','Rappel','Observations'];
+  const r=bilanRows().flatMap(s=>s.lignes.map(l=>{const f=v=>v==null?'':v==='interdit'?'interdit':fd(v);return[fd(s.date),s.type,s.animalIds.map(id=>A(id)?.numero||'?').concat(s.autres?[s.autres]:[]).join(' '),s.lotNom,s.motif,l.produitNom,fmt(l.dose),l.unite,l.voie,l.duree,l.freq,fmt(l.qte),s.ordonnance,fd(s.dateOrd),s.veterinaire,s.intervenant,f(finAtt(s,l,'attL')),f(finAtt(s,l,'attV')),fd(s.rappel),s.notes]}));
+  dl(`bilan-sanitaire-${bY}.csv`,'﻿'+[h,...r].map(x=>x.map(q).join(';')).join('\r\n'),'text/csv;charset=utf-8')}
+
+/* ---------- SAUVEGARDE ---------- */
+function compteCard(){const C=window.CLOUD;if(!C)return'';
+  return`<div class="card"><h2>👤 Compte et exploitation</h2>
+  <p>Connecté : <b>${esc(C.email)}</b><br>Exploitation : <b>${esc(C.nom)}</b> · ${C.membres} membre(s) avec accès</p>
+  <p class="hint">Pour donner accès à ce troupeau à quelqu'un (votre père par exemple) : ajoutez son adresse e-mail ci-dessous. Il crée ensuite son compte avec cette même adresse dans l'application, valide l'e-mail reçu, puis clique sur « Rejoindre ».</p>
+  <div class="row"><input id="invEmail" type="email" placeholder="adresse@email.fr" style="flex:1"><button class="b" onclick="CLOUD.inviter(document.getElementById('invEmail').value)">Autoriser cette adresse</button></div>
+  ${C.invites.length?`<p class="hint" style="margin-top:10px">Adresses autorisées :</p>${C.invites.map(m=>`<div class="row" style="margin:4px 0"><span class="pill g">${esc(m)}</span><button class="del sm" onclick="CLOUD.retirerInvite('${esc(m)}')">retirer</button></div>`).join('')}`:''}
+  <p style="margin-top:14px"><button class="b2" onclick="CLOUD.logout()">Se déconnecter</button></p></div>`}
+VIEWS.sauvegarde=()=>compteCard()+`<div class="card"><h2>Sauvegarde de vos données</h2>
+  <p>${window.CLOUD?'Vos données sont enregistrées <b>en ligne</b> et synchronisées entre vos appareils. Un fichier de sauvegarde reste utile en cas de fausse manipulation.':'Vos données sont enregistrées <b>dans ce navigateur, sur cet ordinateur</b>. Si vous videz l\'historique du navigateur ou changez d\'ordinateur, elles peuvent être perdues : exportez un fichier de sauvegarde régulièrement (clé USB, e-mail, cloud).'}</p>
+  <p class="mute">Dernière sauvegarde : ${S.derniereSauvegarde?fd(S.derniereSauvegarde):'jamais'}</p>
+  <div class="row"><button class="b" onclick="exportJSON()">💾 Télécharger une sauvegarde</button>
+  <label class="b2" style="flex-direction:row;cursor:pointer;color:var(--pri);font-size:15px">📂 Restaurer une sauvegarde<input type="file" accept=".json" style="display:none" onchange="importJSON(this.files[0])"></label></div></div>
+  <div class="card"><h2>Zone dangereuse</h2><button class="del" onclick="if(confirm('Effacer TOUTES les données ? Cette action est définitive.')&&confirm('Vraiment tout effacer ?')){S=blank();save();render()}">Tout effacer</button></div>`;
+function exportJSON(){S.derniereSauvegarde=today();save();dl(`sante-troupeau-sauvegarde-${today()}.json`,JSON.stringify(S,null,1),'application/json');render()}
+function importJSON(file){if(!file)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.produits||!d.soins)throw new Error('fichier non reconnu');if(confirm('Remplacer les données actuelles par cette sauvegarde ?')){S=d;save();render();alert('Sauvegarde restaurée.')}}catch(e){alert('Erreur : '+e.message)}};r.readAsText(file)}
+
+if(window.FIREBASE_CONFIG){const l=document.getElementById('login');l.innerHTML='<div class="lbox"><h2>🐄 Santé Troupeau</h2><p class="mute">Chargement…</p></div>';l.style.display='flex'}else render();
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+
+<script type="module">
+/* ================= MODE EN LIGNE (comptes + synchronisation Firebase) ================= */
+if(window.FIREBASE_CONFIG){
+const B='https://www.gstatic.com/firebasejs/10.12.2/';
+const box=document.getElementById('login');
+const show=h=>{box.innerHTML=`<div class="lbox"><h2>🐄 Santé Troupeau</h2>${h}</div>`;box.style.display='flex'};
+const MSG={'auth/invalid-credential':'E-mail ou mot de passe incorrect.','auth/wrong-password':'Mot de passe incorrect.','auth/user-not-found':'Aucun compte avec cet e-mail.','auth/email-already-in-use':'Un compte existe déjà avec cet e-mail : connectez-vous.','auth/weak-password':'Mot de passe trop court (6 caractères minimum).','auth/invalid-email':'Adresse e-mail invalide.','auth/too-many-requests':'Trop d\'essais, réessayez dans quelques minutes.','auth/network-request-failed':'Pas de connexion internet.','permission-denied':'Accès refusé (vérifiez les règles Firestore).'};
+const msg=e=>MSG[e.code]||e.message;
+let app,AU,FS,auth,db;
+try{
+  const F=await import(B+'firebase-app.js');AU=await import(B+'firebase-auth.js');FS=await import(B+'firebase-firestore.js');
+  app=F.initializeApp(window.FIREBASE_CONFIG);auth=AU.getAuth(app);
+  try{db=FS.initializeFirestore(app,{localCache:FS.persistentLocalCache({tabManager:FS.persistentMultipleTabManager()})})}catch(e){db=FS.getFirestore(app)}
+}catch(e){show(`<p class="err">Impossible de charger le service en ligne : ${e.message}</p><p class="hint">Vérifiez la connexion internet et le fichier firebase-config.js.</p>`);throw e}
+
+function loginForm(err){
+  show(`<p class="mute">Connectez-vous ou créez votre compte.</p>
+  <label>Adresse e-mail<input id="lgE" type="email" autocomplete="email"></label>
+  <label>Mot de passe<input id="lgP" type="password" autocomplete="current-password"></label>
+  <p class="err" id="lgErr">${err||''}</p>
+  <button class="b" id="lgIn">Se connecter</button><button class="b2" id="lgNew">Créer un compte</button>
+  <a href="#" id="lgReset" class="hint">Mot de passe oublié ?</a>`);
+  const E=()=>document.getElementById('lgE').value.trim(),Pw=()=>document.getElementById('lgP').value,er=t=>document.getElementById('lgErr').textContent=t;
+  document.getElementById('lgIn').onclick=()=>AU.signInWithEmailAndPassword(auth,E(),Pw()).catch(e=>er(msg(e)));
+  document.getElementById('lgP').onkeydown=e=>{if(e.key==='Enter')document.getElementById('lgIn').click()};
+  document.getElementById('lgNew').onclick=async()=>{try{const c=await AU.createUserWithEmailAndPassword(auth,E(),Pw());AU.sendEmailVerification(c.user).catch(()=>{})}catch(e){er(msg(e))}};
+  document.getElementById('lgReset').onclick=e=>{e.preventDefault();if(!E())return er('Indiquez d\'abord votre e-mail.');AU.sendPasswordResetEmail(auth,E()).then(()=>er('E-mail de réinitialisation envoyé.')).catch(e=>er(msg(e)))};
+}
+
+const col=()=>FS.collection(db,'exploitations');
+async function choisir(u){
+  show('<p class="mute">Recherche de votre exploitation…</p>');
+  try{
+    const email=(u.email||'').toLowerCase();
+    const q=await FS.getDocs(FS.query(col(),FS.where('membres','array-contains',u.uid)));
+    if(!q.empty)return ouvrir(q.docs[0].id,u);
+    const inv=await FS.getDocs(FS.query(col(),FS.where('invites','array-contains',email)));
+    if(!inv.empty){
+      const d=inv.docs[0];
+      if(!u.emailVerified){show(`<p>Vous avez été autorisé(e) à rejoindre l'exploitation <b>${d.data().nom.replace(/</g,'&lt;')}</b>.</p><p>Validez d'abord votre adresse : cliquez sur le lien reçu par e-mail à <b>${email}</b> (regardez aussi dans les indésirables), puis appuyez sur le bouton.</p><button class="b" id="vOk">J'ai validé mon e-mail</button><button class="b2" id="vRe">Renvoyer l'e-mail</button><button class="b2" id="vOut">Se déconnecter</button><p class="err" id="vErr"></p>`);
+        document.getElementById('vOk').onclick=async()=>{await u.reload();await u.getIdToken(true);if(auth.currentUser.emailVerified)choisir(auth.currentUser);else document.getElementById('vErr').textContent='Adresse pas encore validée.'};
+        document.getElementById('vRe').onclick=()=>AU.sendEmailVerification(u).then(()=>document.getElementById('vErr').textContent='E-mail renvoyé.');
+        document.getElementById('vOut').onclick=()=>AU.signOut(auth);return}
+      show(`<p>Rejoindre l'exploitation <b>${d.data().nom.replace(/</g,'&lt;')}</b> ? Vous partagerez le même troupeau.</p><button class="b" id="jOk">Rejoindre</button><button class="b2" id="jOut">Se déconnecter</button><p class="err" id="jErr"></p>`);
+      document.getElementById('jOk').onclick=()=>FS.updateDoc(d.ref,{membres:FS.arrayUnion(u.uid)}).then(()=>ouvrir(d.id,u)).catch(e=>document.getElementById('jErr').textContent=msg(e));
+      document.getElementById('jOut').onclick=()=>AU.signOut(auth);return}
+    show(`<p>Bienvenue ! Donnez un nom à votre exploitation pour commencer.</p><label>Nom de l'exploitation<input id="nNom" placeholder="GAEC des Prés…"></label><button class="b" id="nOk">Créer</button><button class="b2" id="nOut">Se déconnecter</button><p class="err" id="nErr"></p>`);
+    document.getElementById('nOut').onclick=()=>AU.signOut(auth);
+    document.getElementById('nOk').onclick=async()=>{const nom=document.getElementById('nNom').value.trim();if(!nom)return;const ref=FS.doc(col());
+      try{await FS.setDoc(ref,{nom,membres:[u.uid],invites:[],creePar:email,creeLe:FS.serverTimestamp()});ouvrir(ref.id,u)}catch(e){document.getElementById('nErr').textContent=msg(e)}};
+  }catch(e){show(`<p class="err">${msg(e)}</p><button class="b2" id="eOut">Se déconnecter</button>`);document.getElementById('eOut').onclick=()=>AU.signOut(auth)}
+}
+
+/* Les données sont découpées en documents : "base" (animaux, lots, produits) + un document par année pour les soins et les mouvements de stock */
+function toParts(s){const p={base:JSON.stringify({animaux:s.animaux,lots:s.lots,produits:s.produits,derniereSauvegarde:s.derniereSauvegarde})};const g={};
+  s.soins.forEach(x=>{const k='soins-'+(x.date||'0000').slice(0,4);(g[k]=g[k]||[]).push(x)});s.mouvements.forEach(x=>{const k='mouv-'+(x.date||'0000').slice(0,4);(g[k]=g[k]||[]).push(x)});
+  for(const k in g)p[k]=JSON.stringify(g[k]);return p}
+function fromParts(p){const b=JSON.parse(p.base||'{}');const s={animaux:b.animaux||[],lots:b.lots||[],produits:b.produits||[],derniereSauvegarde:b.derniereSauvegarde||null,soins:[],mouvements:[]};
+  for(const k in p){if(k.startsWith('soins-'))s.soins.push(...JSON.parse(p[k]));else if(k.startsWith('mouv-'))s.mouvements.push(...JSON.parse(p[k]))}return s}
+
+function ouvrir(eid,u){
+  const C={eid,nom:'',email:u.email,invites:[],membres:1,remote:{},known:{},pending:false,ready:false};
+  window.CLOUD=C;
+  const ref=FS.doc(db,'exploitations',eid);
+  C.applyRemote=()=>{setS(fromParts(C.remote));C.known={...C.remote};C.pending=false;render()};
+  C.push=()=>{const cur=toParts(getS());const batch=FS.writeBatch(db);let n=0;
+    new Set([...Object.keys(cur),...Object.keys(C.known)]).forEach(k=>{const v=cur[k]??'[]',old=C.known[k]??'[]';if(v!==old){batch.set(FS.doc(db,'exploitations',eid,'data',k),{json:v,maj:FS.serverTimestamp(),par:u.email});C.known[k]=v;C.remote[k]=v;n++}});
+    if(n)batch.commit().catch(e=>alert('Erreur d\'enregistrement en ligne : '+msg(e)));
+    if(C.pending)C.applyRemote()};
+  C.inviter=m=>{m=String(m||'').trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(m))return alert('Adresse e-mail invalide.');FS.updateDoc(ref,{invites:FS.arrayUnion(m)}).catch(e=>alert(msg(e)))};
+  C.retirerInvite=m=>FS.updateDoc(ref,{invites:FS.arrayRemove(m)}).catch(e=>alert(msg(e)));
+  C.logout=()=>AU.signOut(auth).then(()=>location.reload());
+  FS.onSnapshot(ref,d=>{const x=d.data()||{};C.nom=x.nom||'';C.invites=x.invites||[];C.membres=(x.membres||[]).length;if(C.ready&&tab==='sauvegarde'&&!dlg.open)render()});
+  FS.onSnapshot(FS.collection(db,'exploitations',eid,'data'),snap=>{
+    const r={};snap.forEach(d=>r[d.id]=d.data().json);
+    if(!C.ready&&!r.base&&snap.metadata.fromCache)return; // attendre la réponse du serveur avant de conclure que l'exploitation est vide
+    C.remote=r;
+    if(!C.ready){C.ready=true;box.style.display='none';
+      if(!r.base){setS(blank());C.known={};C.push();render();return}}
+    if(dlg.open)C.pending=true;else C.applyRemote();
+  },e=>show(`<p class="err">Accès aux données impossible : ${msg(e)}</p>`));
+}
+
+AU.onAuthStateChanged(auth,u=>{if(!u){window.CLOUD=null;loginForm();return}choisir(u)});
+}
+</script>
+</body>
+</html>
