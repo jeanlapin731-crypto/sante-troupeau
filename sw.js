@@ -1,5 +1,5 @@
 // Permet d'ouvrir l'application sans réseau (étable, champ) et de l'installer sur le téléphone.
-const CACHE = 'sante-troupeau-v1';
+const CACHE = 'sante-troupeau-v2';
 const FICHIERS = ['./', './index.html', './firebase-config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -15,7 +15,8 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   if (url.origin !== location.origin && url.hostname !== 'www.gstatic.com') return;
   e.respondWith(
-    fetch(e.request).then(r => {
+    // "no-cache" : toujours demander au serveur si le fichier a changé (évite d'afficher une ancienne version)
+    (url.origin === location.origin ? fetch(e.request.url, { cache: 'no-cache' }) : fetch(e.request)).then(r => {
       if (r.ok) { const copie = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copie)); }
       return r;
     }).catch(() => caches.match(e.request))
