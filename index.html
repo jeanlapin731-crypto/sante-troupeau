@@ -220,7 +220,8 @@ const TABS=[['bord','Tableau de bord'],['troupeau','Troupeau'],['traitement','Tr
 let tab='bord';
 function go(t){tab=t;render();window.scrollTo(0,0)}
 function render(){
-  document.getElementById('nav').innerHTML=TABS.map(([k,v])=>`<button class="${k===tab?'on':''}" onclick="go('${k}')">${v}</button>`).join('');
+  document.getElementById('nav').innerHTML=TABS.map(([k,v])=>`<button class="${k===tab?'on':''}" onclick="go('${k}')">${v}</button>`).join('')
+    +(window.CLOUD?`<button title="Connecté : ${esc(CLOUD.email)}" onclick="if(confirm('Se déconnecter de ${esc(CLOUD.email)} ?'))CLOUD.logout()" style="background:#fff;color:var(--bad);font-weight:600">⎋ Déconnexion</button>`:'');
   document.getElementById('dl-prod').innerHTML=S.produits.map(p=>`<option value="${esc(p.nom)}">${esc(p.cat+' — '+p.principe)}</option>`).join('');
   document.getElementById('dl-mal').innerHTML=MALADIES.map(m=>`<option value="${esc(m)}">`).join('');
   document.getElementById('dl-vet').innerHTML=[...new Set(S.soins.map(s=>s.veterinaire).filter(Boolean))].map(v=>`<option value="${esc(v)}">`).join('');
