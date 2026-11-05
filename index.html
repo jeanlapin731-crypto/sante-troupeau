@@ -499,7 +499,8 @@ VIEWS.sauvegarde=()=>compteCard()+`<div class="card"><h2>Sauvegarde de vos donn�
 function exportJSON(){S.derniereSauvegarde=today();save();dl(`sante-troupeau-sauvegarde-${today()}.json`,JSON.stringify(S,null,1),'application/json');render()}
 function importJSON(file){if(!file)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.produits||!d.soins)throw new Error('fichier non reconnu');if(confirm('Remplacer les données actuelles par cette sauvegarde ?')){S=d;save();render();alert('Sauvegarde restaurée.')}}catch(e){alert('Erreur : '+e.message)}};r.readAsText(file)}
 
-if(window.FIREBASE_CONFIG){const l=document.getElementById('login');l.innerHTML='<div class="lbox"><h2>🐄 Santé Troupeau</h2><p class="mute">Chargement…</p></div>';l.style.display='flex'}else render();
+if(window.FIREBASE_CONFIG===undefined&&location.protocol.startsWith('http')){const l=document.getElementById('login');l.innerHTML='<div class="lbox"><h2>🐄 Santé Troupeau</h2><p class="err">Le fichier <b>firebase-config.js</b> est absent ou mal rempli.</p><p class="hint">Il doit contenir <code>window.FIREBASE_CONFIG = { apiKey: ..., ... };</code> — sans « const firebaseConfig = » ni ligne « import ». Voir la notice, étape 2.</p></div>';l.style.display='flex'}
+else if(window.FIREBASE_CONFIG){const l=document.getElementById('login');l.innerHTML='<div class="lbox"><h2>🐄 Santé Troupeau</h2><p class="mute">Chargement…</p></div>';l.style.display='flex'}else render();
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 

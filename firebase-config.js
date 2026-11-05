@@ -18,7 +18,7 @@
 //  };
 // =====================================================================
 
-window.FIREBASE_CONFIG = const firebaseConfig = {
+window.FIREBASE_CONFIG = {
   apiKey: "AIzaSyANBv3SNLnfTSEF1b4-ejtud7zzG25EwXM",
   authDomain: "sante-troupeau.firebaseapp.com",
   projectId: "sante-troupeau",
