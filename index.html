@@ -376,14 +376,87 @@ function formLot(id){const l=id?L(id):{nom:''};const membres=S.animaux.filter(a=
   ${id?`<p><button type="button" class="del" onclick="if(confirm('Supprimer ce lot ?')){S.lots=S.lots.filter(x=>x.id!=='${id}');S.animaux.forEach(a=>{if(a.lotId==='${id}')a.lotId=''});save();dlg.close();render()}">Supprimer le lot</button></p>`:''}`,f=>{
     let lid=id;if(id)l.nom=f.get('nom').trim();else{lid=uid();S.lots.push({id:lid,nom:f.get('nom').trim()})}
     const sel=f.getAll('an');S.animaux.forEach(a=>{if(sel.includes(a.id))a.lotId=lid;else if(a.lotId===lid)a.lotId=''});});}
-function formImport(){modal(`<h3>Importer une liste d'animaux</h3><p class="hint">Collez une ligne par animal (depuis Excel ou un fichier CSV). Colonnes dans cet ordre, séparées par ; ou tabulation :<br><b>N° national ; Nom ; Espèce ; Race ; Sexe (F/M) ; Date naissance (jj/mm/aaaa) ; Lot</b><br>Seul le n° est obligatoire. Les numéros déjà présents sont mis à jour.</p>
-  <textarea name="txt" style="width:100%;min-height:220px" placeholder="FR1234567890;Marguerite;Bovin;Prim'Holstein;F;12/03/2021;Vaches laitières"></textarea>`,f=>{
+/* ---------- IMPORT DE FICHIERS (SYNEL, Excel, CSV, PDF, ZIP, dossier) ---------- */
+const RACES={'12':'Abondance','14':'Aubrac','31':'Tarentaise','34':'Limousine','38':'Charolaise','39':'Croisé','41':'Brune','46':'Montbéliarde','56':'Normande','57':'Parthenaise','66':"Prim'Holstein",'79':"Blonde d'Aquitaine"};
+const RACES_ABR={PH:"Prim'Holstein",HO:"Prim'Holstein",MO:'Montbéliarde',MB:'Montbéliarde',NO:'Normande',CH:'Charolaise',LI:'Limousine',BA:"Blonde d'Aquitaine",BB:'Blanc Bleu',BBB:'Blanc Bleu',CR:'Croisé',RF:'Rouge Flamande',AU:'Aubrac',SA:'Salers'};
+const sansAcc=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+function normNum(v){let s=String(v??'').toUpperCase().replace(/[\s.\-]/g,'');if(/^\d{10}$/.test(s))s='FR'+s;return/^[A-Z]{2}\d{8,12}$/.test(s)?s:''}
+const numKey=v=>normNum(v)||String(v||'').toUpperCase().replace(/[\s.\-]/g,'');
+function parseDateAny(v){if(v instanceof Date&&!isNaN(v)){const d=new Date(v.getTime()+12*36e5);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+  if(typeof v==='number'&&v>20000&&v<80000)return new Date(Date.UTC(1899,11,30)+v*864e5).toISOString().slice(0,10);
+  const s=String(v??'').trim();let m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);if(m){let y=m[3];if(y.length===2)y=(+y>40?'19':'20')+y;return`${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`}
+  m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[0];m=s.match(/^(\d{4})(\d{2})(\d{2})$/);return m?`${m[1]}-${m[2]}-${m[3]}`:''}
+function parseSexe(v){const s=sansAcc(v);if(!s)return'';if(/castr|boeuf/.test(s))return'Mâle castré';if(/^(f|2$|fem|gen|vache)/.test(s))return'Femelle';if(/^(m|1$|tau|male)/.test(s))return'Mâle';return''}
+function parseRace(v){const s=String(v??'').trim();if(!s)return'';if(/^\d{1,2}$/.test(s))return RACES[s.padStart(2,'0')]||'Race '+s;return RACES_ABR[s.toUpperCase()]||s}
+const COLS=[['travail',/travail|n\W*trav|^nt$/],['numero',/national|identif|ipg|boucle|^n\W*(animal|bovin)?$|^numero( animal| bovin)?$|^num$/],['nom',/^nom\b/],['race',/race|type racial/],['sexe',/^sexe|^sx$/],['naissance',/naiss|^nee? le|^date de n/],['lot',/^lot|groupe/],['espece',/espece/],['sortie',/sortie/]];
+function mapHeader(row){const h={};row.forEach((c,i)=>{const s=sansAcc(c);if(!s||/mere|pere/.test(s))return;for(const[k,re]of COLS)if(h[k]==null&&re.test(s)){h[k]=i;break}});return h.numero!=null&&Object.keys(h).length>=2?h:null}
+function lineToAnimal(t){t=String(t);const m=t.toUpperCase().match(/\b([A-Z]{2})[\s.]?(\d{2})[\s.]?(\d{4})[\s.]?(\d{4})\b/);if(!m)return null;
+  const a={numero:m[1]+m[2]+m[3]+m[4]};const rest=t.slice(m.index+m[0].length);
+  const d=rest.match(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/);if(d)a.naissance=parseDateAny(d[0]);
+  const sx=rest.match(/(?:^|\s)(femelle|m[aâ]le|F|M)(?=\s|$)/i);if(sx)a.sexe=parseSexe(sx[1]);
+  const rn=[...Object.values(RACES),'Holstein','Blanc Bleu','Rouge Flamande','Salers','Simmental','Jersiaise'].find(r=>sansAcc(rest).replace(/['\s]/g,'').includes(sansAcc(r).replace(/['\s]/g,'')));if(rn)a.race=rn==='Holstein'?"Prim'Holstein":rn;
+  return a}
+function rowsToAnimals(rows){const res=[];let h=null,hi=-1;for(let i=0;i<Math.min(rows.length,40);i++){h=mapHeader(rows[i]);if(h){hi=i;break}}
+  if(!h){rows.forEach(r=>{const a=lineToAnimal(r.join(' '));if(a)res.push(a)});return res}
+  const cel=(r,k)=>h[k]==null?'':r[h[k]]??'';
+  for(let i=hi+1;i<rows.length;i++){const r=rows[i];const numero=normNum(cel(r,'numero'));if(!numero)continue;const a={numero};
+    const nom=[cel(r,'travail'),cel(r,'nom')].map(x=>String(x).trim()).filter(Boolean).join(' ');if(nom)a.nom=nom;
+    if(h.race!=null)a.race=parseRace(cel(r,'race'));if(h.sexe!=null)a.sexe=parseSexe(cel(r,'sexe'));if(h.naissance!=null)a.naissance=parseDateAny(cel(r,'naissance'));
+    if(h.lot!=null)a.lot=String(cel(r,'lot')).trim();if(h.espece!=null){const e=ESPECES.find(x=>sansAcc(x)===sansAcc(cel(r,'espece')));if(e)a.espece=e}
+    if(String(cel(r,'sortie')).trim())a.actif=false;res.push(a)}
+  return res}
+async function lib(name,src){if(window[name])return window[name];await new Promise((ok,ko)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>ko(new Error('connexion internet nécessaire pour lire ce type de fichier'));document.head.appendChild(s)});return window[name]}
+const readTxt=(f,enc)=>new Promise((ok,ko)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>ko(r.error);r.readAsText(f,enc)});
+async function textOf(f){let t=await readTxt(f,'utf-8');if(t.includes('�'))t=await readTxt(f,'windows-1252');return t}
+function splitCSV(l,sep){const out=[];let cur='',q=false;for(let i=0;i<l.length;i++){const c=l[i];if(q){if(c==='"'){if(l[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}else if(c==='"')q=true;else if(c===sep){out.push(cur.trim());cur=''}else cur+=c}out.push(cur.trim());return out}
+function textToRows(t){const lines=t.split(/\r?\n/).filter(l=>l.trim());const ech=lines.slice(0,30);const sep=[';','\t','|',','].map(c=>[c,ech.join('\n').split(c).length-1]).sort((a,b)=>b[1]-a[1])[0];
+  return sep[1]<ech.length?lines.map(l=>[l]):lines.map(l=>splitCSV(l,sep[0]))}
+async function xlsRows(buf){const X=await lib('XLSX','https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');const wb=X.read(buf,{type:'array',cellDates:true});return wb.SheetNames.map(n=>X.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:''}))}
+async function pdfRows(buf){const P=await lib('pdfjsLib','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');P.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const doc=await P.getDocument({data:buf}).promise;const rows=[];
+  for(let p=1;p<=doc.numPages;p++){const items=(await (await doc.getPage(p)).getTextContent()).items.filter(it=>it.str.trim()).map(it=>({x:it.transform[4],y:it.transform[5],s:it.str})).sort((a,b)=>b.y-a.y||a.x-b.x);
+    let cur=[],y=null;const fin=()=>{if(cur.length)rows.push([cur.sort((a,b)=>a.x-b.x).map(i=>i.s).join(' ')]);cur=[]};
+    items.forEach(it=>{if(y!==null&&Math.abs(it.y-y)>3)fin();y=it.y;cur.push(it)});fin()}
+  return rows}
+async function animauxDuFichier(f){const ext=(f.name.includes('.')?f.name.split('.').pop():'').toLowerCase();
+  if(['xlsx','xls','xlsm','ods'].includes(ext))return(await xlsRows(await f.arrayBuffer())).flatMap(rowsToAnimals);
+  if(ext==='pdf')return rowsToAnimals(await pdfRows(await f.arrayBuffer()));
+  if(ext==='zip'){const Z=await lib('JSZip','https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');const z=await Z.loadAsync(await f.arrayBuffer());let out=[];
+    for(const e of Object.values(z.files)){if(e.dir)continue;const r=await animauxDuFichier(new File([await e.async('blob')],e.name.split('/').pop()));if(r)out=out.concat(r)}return out}
+  if(['csv','txt','xml','dat','prn','tsv',''].includes(ext)||(f.type||'').startsWith('text')){let t=await textOf(f);if(ext==='xml')t=t.replace(/<\/[^>]+>\s*(?=<[^\/])/g,'\n').replace(/<[^>]+>/g,' ');return rowsToAnimals(textToRows(t))}
+  return null}
+function fusionAnimaux(list){const m=new Map();list.forEach(a=>{const o=m.get(a.numero)||{numero:a.numero};for(const[k,v]of Object.entries(a))if(v!==''&&v!=null&&!(k==='actif'&&o.actif===false))o[k]=v;m.set(a.numero,o)});return[...m.values()]}
+function appliquerImport(list,sortirAbsents){let nv=0,maj=0,sortis=0;const idx=new Map(S.animaux.map(a=>[numKey(a.numero),a]));
+  list.forEach(a=>{const o={};['nom','race','sexe','naissance','espece'].forEach(k=>{if(a[k])o[k]=a[k]});o.actif=a.actif!==false;
+    if(a.lot){let l=S.lots.find(x=>sansAcc(x.nom)===sansAcc(a.lot));if(!l){l={id:uid(),nom:a.lot};S.lots.push(l)}o.lotId=l.id}
+    const ex=idx.get(a.numero);if(ex){Object.assign(ex,o);maj++}else{const n={id:uid(),numero:a.numero,nom:a.numero.slice(-4),espece:'Bovin',race:'',sexe:'',naissance:'',lotId:'',...o};S.animaux.push(n);idx.set(a.numero,n);nv++}});
+  if(sortirAbsents&&list.length){const pres=new Set(list.filter(a=>a.actif!==false).map(a=>a.numero));S.animaux.forEach(a=>{if(a.actif!==false&&!pres.has(numKey(a.numero))){a.actif=false;sortis++}})}
+  return{nv,maj,sortis}}
+let impList=null;
+async function impFichiers(files){const box=document.getElementById('impRes');box.innerHTML='<p class="mute">Lecture des fichiers…</p>';const all=[],lus=[],ign=[];
+  for(const f of files){if(/^[.~]/.test(f.name))continue;try{const r=await animauxDuFichier(f);if(r==null){ign.push(f.name);continue}lus.push(esc(f.name)+' : '+r.length);all.push(...r)}catch(e){lus.push(esc(f.name)+' : erreur ('+esc(e.message)+')')}}
+  impList=fusionAnimaux(all);const keys=new Set(S.animaux.map(a=>numKey(a.numero)));const nv=impList.filter(a=>!keys.has(a.numero)).length;
+  const det=`<p class="hint">Fichiers lus : ${lus.join(' · ')||'aucun'}${ign.length?' — ignorés (format non lu) : '+ign.map(esc).join(', '):''}</p>`;
+  box.innerHTML=impList.length?`<div class="alert" style="background:var(--pri2);color:var(--pri)">✔ <b>${impList.length}</b> animal(aux) trouvé(s) : ${nv} nouveau(x), ${impList.length-nv} déjà dans l'application (mis à jour).</div>
+  <div class="tw" style="max-height:240px;overflow:auto"><table><tr><th>N° national</th><th>Nom / n° travail</th><th>Race</th><th>Sexe</th><th>Naissance</th><th>Lot</th></tr>${impList.slice(0,300).map(a=>`<tr ${a.actif===false?'style="opacity:.5" title="sorti"':''}><td>${esc(a.numero)}</td><td>${esc(a.nom||a.numero.slice(-4))}</td><td>${esc(a.race||'')}</td><td>${esc(a.sexe||'')}</td><td>${fd(a.naissance)}</td><td>${esc(a.lot||'')}</td></tr>`).join('')}</table></div>
+  <label style="flex-direction:row;align-items:center;gap:6px;margin-top:8px"><input type="checkbox" name="sortir" value="1"> Marquer « sortis » les animaux de l'application absents de ces fichiers (inventaire complet)</label>${det}<p class="hint">Cliquez sur <b>Enregistrer</b> pour importer.</p>`
+  :`<div class="alert r">Aucun numéro d'animal (FR + 10 chiffres) trouvé dans ces fichiers.</div>${det}<p class="hint">Dans SYNEL, exportez plutôt la liste / l'inventaire des bovins présents (format Excel ou CSV de préférence).</p>`}
+function formImport(){impList=null;modal(`<h3>Importer des animaux</h3>
+  <div style="border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:12px"><b>📂 Depuis SYNEL (ou un autre logiciel d'élevage)</b>
+  <p class="hint">Exportez depuis SYNEL l'inventaire / la liste des bovins (Excel, CSV ou PDF), puis choisissez le ou les fichiers — ou le dossier entier. Formats lus : Excel (.xls, .xlsx), CSV, texte, PDF, XML, ZIP. Les colonnes sont reconnues automatiquement (n° national, n° travail, nom, race, sexe, date de naissance, lot, sortie).</p>
+  <div class="row"><label class="b" style="flex-direction:row;cursor:pointer;font-size:15px">📄 Choisir des fichiers<input type="file" multiple accept=".xls,.xlsx,.xlsm,.ods,.csv,.txt,.tsv,.pdf,.xml,.zip" style="display:none" onchange="impFichiers(this.files)"></label>
+  <label class="b2" style="flex-direction:row;cursor:pointer;color:var(--pri);font-size:15px">📁 Choisir un dossier<input type="file" webkitdirectory multiple style="display:none" onchange="impFichiers(this.files)"></label></div>
+  <div id="impRes"></div></div>
+  <details><summary style="cursor:pointer">… ou coller une liste (copier-coller depuis Excel)</summary><p class="hint">Une ligne par animal, colonnes dans cet ordre, séparées par ; ou tabulation :<br><b>N° national ; Nom ; Espèce ; Race ; Sexe (F/M) ; Date naissance (jj/mm/aaaa) ; Lot</b><br>Seul le n° est obligatoire. Les numéros déjà présents sont mis à jour.</p>
+  <textarea name="txt" style="width:100%;min-height:160px" placeholder="FR1234567890;Marguerite;Bovin;Prim'Holstein;F;12/03/2021;Vaches laitières"></textarea></details>`,f=>{
+  let msg=[];if(impList&&impList.length){const r=appliquerImport(impList,f.get('sortir')==='1');msg.push(`${r.nv} animal(aux) ajouté(s), ${r.maj} mis à jour`+(r.sortis?`, ${r.sortis} marqué(s) sortis`:'')+'.')}
+  if(!f.get('txt').trim()){if(!msg.length){alert('Choisissez un fichier ou collez une liste.');return false}alert(msg.join('\n'));return}
   let n=0;f.get('txt').split(/\r?\n/).forEach(line=>{const c=line.split(/;|\t/).map(x=>x.trim());if(!c[0]||/^n[°o]/i.test(c[0]))return;
     let lotId='';if(c[6]){let l=S.lots.find(x=>x.nom.toLowerCase()===c[6].toLowerCase());if(!l){l={id:uid(),nom:c[6]};S.lots.push(l)}lotId=l.id}
     let d='';if(c[5]){const m=c[5].match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);if(m){let y=m[3].length===2?'20'+m[3]:m[3];d=`${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`}else if(/^\d{4}-\d{2}-\d{2}$/.test(c[5]))d=c[5]}
     const sx=/^m/i.test(c[4]||'')?'Mâle':'Femelle';const esp=ESPECES.find(e=>e.toLowerCase()===(c[2]||'').toLowerCase())||'Bovin';
-    const o={numero:c[0],nom:c[1]||'',espece:esp,race:c[3]||'',sexe:sx,naissance:d,lotId,actif:true};const ex=S.animaux.find(a=>a.numero===o.numero);
-    if(ex)Object.assign(ex,o);else S.animaux.push({id:uid(),...o});n++});alert(n+' animal(aux) importé(s).');});}
+    const o={numero:c[0],nom:c[1]||'',espece:esp,race:c[3]||'',sexe:sx,naissance:d,lotId,actif:true};const ex=S.animaux.find(a=>numKey(a.numero)===numKey(o.numero));
+    if(ex)Object.assign(ex,o);else S.animaux.push({id:uid(),...o});n++});msg.push(n+' animal(aux) importé(s) depuis la liste collée.');alert(msg.join('\n'));});}
 function ficheAnimal(id){const a=A(id);const ss=S.soins.filter(s=>s.animalIds.includes(id)).sort((x,y)=>y.date.localeCompare(x.date));
   modal(`<h3>${esc(a.numero)} ${esc(a.nom||'')}</h3><p class="mute">${esc(a.espece)} · ${esc(a.race||'')} · ${esc(a.sexe||'')} · né(e) le ${fd(a.naissance)||'?'} · lot ${esc(L(a.lotId)?.nom||'—')}</p>
   <div class="tw"><table><tr><th>Date</th><th>Type</th><th>Motif</th><th>Produits</th><th>Ordonnance</th></tr>${ss.map(s=>`<tr><td>${fd(s.date)}</td><td>${s.type==='vaccin'?'Vaccin':'Traitement'}</td><td>${esc(s.motif)}</td><td>${s.lignes.map(l=>esc(l.produitNom)+' '+fmt(l.dose)+' '+esc(l.unite)).join('<br>')}</td><td>${esc(s.ordonnance)}</td></tr>`).join('')||'<tr><td colspan="5" class="mute">Aucun soin.</td></tr>'}</table></div>`,()=>{});
