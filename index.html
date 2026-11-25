@@ -252,6 +252,99 @@ const CATALOGUE = [
 ['Bovilis Intranasal RSP Live','VRS + PI3','Vaccin','dose',1,0,0],
 ['Hiprabovis Somni/Lkt','Histophilus + Mannheimia','Vaccin','dose',1,0,0],
 ];
+/* Délais d'attente bovins (novembre 2026), relevés dans les RCP/notices de la base européenne des médicaments vétérinaires
+   (medicines.health.europa.eu), AMM française en priorité. Quand le délai dépend de la voie ou de la dose, la valeur la plus longue est retenue.
+   [lait (j, -1 = interdit en lactation), viande (j), remarque]. Toujours vérifier l'ordonnance et la notice de la boîte. */
+const DELAIS={
+'Naxcel 200 mg/mL':[0,9,"Injection à la base de l'oreille."],
+'Forcyl':[2,5,'Lait 48 h.'],
+'Baytril 10 %':[4,12,'Valeurs voie s.c. ; voie i.v. : lait 3 j, viande 5 j.'],
+'Resflor':[-1,46],
+'Shotapen L.A.':[-1,64],
+'Depocilline':[10,16,'Viande 14 j si traitement de 3 à 5 j.'],
+'Alamycin L.A. 300':[10,35,'Pas de fiche française trouvée : valeur européenne la plus longue.'],
+'Terramycine L.A.':[7,37],
+'Synulox RTU':[4,42,'Lait 60 à 96 h selon le pays : 96 h retenues.'],
+'Clamoxyl L.A.':[9,92],
+'Borgal 24 %':[6,14,'Valeurs voie i.v. ; voie i.m. : lait 4 j, viande 10 j.'],
+'Micotil 300':[-1,70],
+'Cobactan LC':[5,4],
+'Synulox LC':[4,7,'Lait 84 h (7e traite après le dernier traitement).'],
+'Mastiplan LC':[6,4,'Lait 5,5 à 6 j selon la notice.'],
+'Orbenin Extra DC':[44,1,'Lait : 36 h après vêlage si tarissement ≥ 42 j, sinon 44 j après le traitement.'],
+'Cepravin DC':[58,21,'Lait : 96 h après vêlage si tarissement ≥ 54 j, sinon 58 j après le traitement.'],
+'Ubro Red':[37,10],
+'Mamyzin':[4,20,'Mamyzin 5 g / 10 g : viande 8 j.'],
+'Rheumocam 20 mg/mL':[5,15],
+'Finadyne':[2,31,'Valeurs voie i.m. ; voie i.v. : lait 24 h, viande 4 j.'],
+'Dexadreson':[3,8],
+'Tolfine':[1,12,'Voie i.m. : lait 0 j, viande 12 j ; voie i.v. : lait 12 h, viande 4 j.'],
+'Eprecis':[0,63],
+'Cydectin 0,5 % pour-on':[6,14],
+'Dectomax injectable':[-1,70,'Génisses : pas dans les 2 mois avant le vêlage.'],
+'Panacur 2,5 %':[6,11],
+'Valbazen 10 %':[4,7,'Lait 84 h.'],
+'Fasinex':[-1,56,'Vaches taries / génisses : 7 semaines si vêlage moins de 6 semaines après le traitement.'],
+'Distocur':[5,13,'Lait 108 h.'],
+'Butox pour-on':[3,18,'Lait 0 j jusqu\'à 30 mL (mouches, poux) ; 2,5 j à 75 mL (tiques).'],
+'Enzaprost T':[0,2],
+'Dinolytic':[0,2],
+'Estrumate':[0,1],
+'PRID Delta':[0,0],
+'CIDR':[0,0],
+'Amphoprim':[2,5,'Lait 48 h.'],
+'Tylan 200':[5,28,'Lait 108 h.'],
+'Pharmasin 200 mg/mL':[5,28,'Lait 108 h.'],
+'Rilexine 150 mg/mL injectable':[0,5,'Lait non consommable pendant le traitement.'],
+'Cevaxel RTU':[0,8],
+'Marbox 100 mg/mL':[3,6,'Voie i.m. : lait 72 h, viande 3 j ; voie s.c. : lait 36 h, viande 6 j.'],
+'Advocin 180':[4,8],
+'Selectan 300 mg/mL':[-1,30],
+'Florkem':[-1,37],
+'Tulissin':[-1,22],
+'Increxxa':[-1,22],
+'Zactran':[-1,64],
+'Hexasol LA':[-1,28],
+'Engemycine':[7,39,'Lait 4 j à 5 mg/kg, 7 j à 10 mg/kg.'],
+'Betamox LA':[5,42,'Pas de fiche française trouvée : valeur européenne la plus longue.'],
+'Vetrimoxin LA':[3,18,'Pas de fiche française trouvée : valeur européenne la plus longue.'],
+'Intramicine':[7,30],
+'Pen & Strep':[2,28,'Pas de fiche française trouvée (fiche Norbrook roumaine).'],
+'Lincospectin':[-1,14,'Génisses : pas dans les 2 mois avant le vêlage.'],
+'Rilexine 200 LC':[3,4,'Notice française : lait 2 j ; fiche allemande : 3 j.'],
+'Rilexine 375 HL / DC':[43,4,'Lait : 12 h après vêlage si tarissement > 42 j, sinon 42,5 j après le traitement.'],
+'Mastijet Fort':[4,30],
+'Masti-Peni':[7,7],
+'Mastitar HL':[38,19,'Lait : 3 j après vêlage si tarissement ≥ 35 j, sinon 38 j après le traitement.'],
+'Tetra-Delta':[5,7,'Lait 108 h.'],
+'Intramar Lacto':[4,7,'Lait 84 h.'],
+'Cephaguard LC':[5,4,'Valeurs des autres cefquinome 75 mg lactation (Cobactan LC).'],
+'Bovaclox DC':[56,35,'Valeur européenne la plus longue ; lait 96 h après vêlage si vêlage plus de 45 à 49 j après le traitement.'],
+'Melovem 20 mg/mL':[5,15],
+'Inflacam 20 mg/mL':[5,15],
+'Novem 20 mg/mL':[5,15],
+'Dinalgen 150 mg/mL':[0,2],
+'Rifen 100 mg/mL':[0,4,'Voie i.v. : viande 1 j.'],
+'Dexafort':[8,63],
+'Rapidexon':[3,8,'Lait 72 h.'],
+'Closamectin injectable':[-1,49,'Fiche britannique (pas de fiche française trouvée).'],
+'Closamectin pour-on':[-1,58,'Fiche britannique (pas de fiche française trouvée).'],
+'Virbamec':[-1,49],
+'Noromectin':[-1,49,'Génisses : pas dans les 60 j avant le vêlage.'],
+'Cydectin injectable 1 %':[-1,65],
+'Dectomax pour-on':[-1,35,'Génisses : pas dans les 2 mois avant le vêlage.'],
+'Flukiver':[-1,77,'Génisses : pas au dernier trimestre de gestation.'],
+'Hapadex':[3,6,'AMM française abandonnée en 2023.'],
+'Oxfenil':[7,15],
+'Bayticol pour-on':[10,5],
+'Bisolvon':[-1,3],
+'Prosolvin':[0,1],
+'Cyclix':[0,2,'Certaines notices : viande 1 j.'],
+'LongRange':[null,null,"Non autorisé dans l'Union européenne (refus EMA) : aucun délai officiel."],
+'Vitamine AD3E':[null,null,'Très variable selon la marque (viande 0 à 259 j) : voir la notice.'],
+'Sélénium + vitamine E':[null,null,'Très variable selon la marque (viande 4 à 15 j) : voir la notice.'],
+};
+CATALOGUE.forEach(c=>{const d=DELAIS[c[0]];if(d){if(d[0]!=null)c[5]=d[0];if(d[1]!=null)c[6]=d[1];c[7]=d[2]||''}});
 const CATS=['Antibiotique','Intramammaire','Anti-inflammatoire','Antiparasitaire','Antidiarrhéique','Vitamines/minéraux','Hormone','Vaccin','Autre'];
 const MALADIES=['Mammite clinique','Mammite subclinique (cellules)','Tarissement','Broncho-pneumonie (BPIE)','Pneumonie','Diarrhée néonatale','Cryptosporidiose','Coccidiose','Salmonellose','Colibacillose','Omphalite (gros nombril)','Arthrite','Panaris / phlegmon interdigité','Dermatite digitée (Mortellaro)','Boiterie','Piétin','Fièvre de lait (hypocalcémie)','Cétose / acétonémie','Acidose','Météorisation','Déplacement de caillette','Non-délivrance (rétention placentaire)','Métrite','Endométrite','Kyste ovarien','Synchronisation des chaleurs','Vêlage difficile / césarienne','Prolapsus','Strongles gastro-intestinaux','Strongles pulmonaires (dictyocaulose)','Grande douve','Paramphistome','Gale','Poux','Teigne','Myiases','BVD (diarrhée virale bovine)','IBR','FCO (fièvre catarrhale ovine)','MHE (maladie hémorragique épizootique)','Entérotoxémie / clostridioses','Tétanos','Leptospirose','Fièvre Q','Chlamydiose','Kérato-conjonctivite','Otite','Blessure / plaie','Fièvre','Douleur / inflammation','Carence vitamines / oligo-éléments','Autre'];
 const VOIES=['IM','SC','IV','Orale','Intramammaire','Pour-on','Intra-utérine','Intranasale','Locale / cutanée','Vaginale'];
@@ -267,7 +360,7 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 const num=v=>{if(v===''||v==null)return null;const n=Number(String(v).replace(',','.'));return isNaN(n)?null:n};
 const fmt=n=>n==null?'':(Math.round(n*100)/100).toLocaleString('fr-FR');
 
-function blank(){return{animaux:[],lots:[],produits:CATALOGUE.map(c=>({id:uid(),nom:c[0],principe:c[1],cat:c[2],unite:c[3],contenance:c[4],attL:c[5],attV:c[6],seuil:null,custom:false})),mouvements:[],soins:[],derniereSauvegarde:null}}
+function blank(){return{animaux:[],lots:[],produits:CATALOGUE.map(c=>({id:uid(),nom:c[0],principe:c[1],cat:c[2],unite:c[3],contenance:c[4],attL:c[5],attV:c[6],noteAtt:c[7]||'',seuil:null,custom:false})),mouvements:[],soins:[],derniereSauvegarde:null}}
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.produits){mergeCatalogue(s);return s}}catch(e){}return blank()}
 let S=load();
 function save(){if(window.CLOUD){CLOUD.push();return}try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){alert("Impossible d'enregistrer dans le navigateur : "+e.message)}}
@@ -286,7 +379,10 @@ function seuilAuto(p){const e=S.mouvements.filter(m=>m.produitId===p.id&&m.type=
 function seuilEff(p){return p.seuil!=null?p.seuil:seuilAuto(p)}
 function seuilTxt(p){const s=seuilEff(p);return s==null?'<span class="mute">—</span>':fmt(s)+' '+esc(p.unite)+(p.seuil==null?' <span class="pill">auto 20 %</span>':'')}
 /* Ajoute aux données existantes les produits du catalogue qui n'y sont pas encore (mises à jour de l'appli) */
-function mergeCatalogue(s){const noms=new Set(s.produits.map(p=>p.nom.toLowerCase()));let n=0;CATALOGUE.forEach(c=>{if(!noms.has(c[0].toLowerCase())){s.produits.push({id:uid(),nom:c[0],principe:c[1],cat:c[2],unite:c[3],contenance:c[4],attL:c[5],attV:c[6],seuil:null,custom:false});n++}});return n}
+function mergeCatalogue(s){const noms=new Set(s.produits.map(p=>p.nom.toLowerCase()));let n=0;CATALOGUE.forEach(c=>{if(!noms.has(c[0].toLowerCase())){s.produits.push({id:uid(),nom:c[0],principe:c[1],cat:c[2],unite:c[3],contenance:c[4],attL:c[5],attV:c[6],noteAtt:c[7]||'',seuil:null,custom:false});n++}});
+  // Complète les délais d'attente encore inconnus des produits du catalogue (sans toucher à ce que l'utilisateur a saisi)
+  const cat=new Map(CATALOGUE.map(c=>[c[0].toLowerCase(),c]));s.produits.forEach(p=>{const c=!p.custom&&cat.get(p.nom.toLowerCase());if(!c)return;
+    if(p.attL==null&&c[5]!=null){p.attL=c[5];n++}if(p.attV==null&&c[6]!=null){p.attV=c[6];n++}if((c[7]||'')!==(p.noteAtt||'')){p.noteAtt=c[7]||'';n++}});return n}
 function peremption(pid){const d=S.mouvements.filter(m=>m.produitId===pid&&m.type==='entree'&&m.peremption).map(m=>m.peremption).sort();return d.find(x=>x>=addDays(today(),-365))||null}
 function attTxt(v){return v==null?'<span class="mute">?</span>':v<0?'<span class="pill r">interdit lait</span>':v+' j'}
 function finAtt(s,l,k){const v=l[k];if(v==null)return null;if(v<0)return'interdit';return addDays(addDays(s.date,(l.duree||1)-1),v)}
@@ -487,9 +583,9 @@ function ligneHTML(l={}){const p=l.produitId?P(l.produitId):null;
   <label>Attente lait (j) <span class="hint">-1 = interdit</span><input class="lal" inputmode="numeric" value="${l.attL??''}"></label>
   <label>Attente viande (j)<input class="lav" inputmode="numeric" value="${l.attV??''}"></label>
   <label>Quantité à sortir du stock<input class="lq" inputmode="decimal" value="${l.qte??''}" oninput="this.dataset.m=1" ${l.qte!=null?'data-m="1"':''}></label>
-  </div><div class="row" style="justify-content:space-between"><div class="calc lc"></div><button type="button" class="del sm" onclick="this.closest('.ligne').remove();recalc()">Retirer ce produit</button></div></div>`}
+  </div><div class="hint lnote">${p?.noteAtt?'⚠ '+esc(p.noteAtt):''}</div><div class="row" style="justify-content:space-between"><div class="calc lc"></div><button type="button" class="del sm" onclick="this.closest('.ligne').remove();recalc()">Retirer ce produit</button></div></div>`}
 function prodChoisi(inp){const p=prodByName(inp.value);const box=inp.closest('.ligne');if(!p){box.querySelector('.lc').textContent='Produit inconnu : il sera ajouté au catalogue.';return}
-  box.querySelector('.lu').value=p.unite;box.querySelector('.lal').value=p.attL??'';box.querySelector('.lav').value=p.attV??'';
+  box.querySelector('.lu').value=p.unite;box.querySelector('.lal').value=p.attL??'';box.querySelector('.lav').value=p.attV??'';box.querySelector('.lnote').textContent=p.noteAtt?'⚠ '+p.noteAtt:'';
   if(p.cat==='Intramammaire')box.querySelector('.lv').value='Intramammaire';else if(p.cat==='Vaccin')box.querySelector('.lv').value=p.nom.match(/intra ?nasal/i)?'Intranasale':'SC';
   if(p.unite==='dose'||p.unite==='injecteur'||p.unite==='bolus'||p.unite==='dispositif'){const d=box.querySelector('.ld');if(!d.value)d.value=1}
   delete box.querySelector('.lq').dataset.m;recalc()}
@@ -595,7 +691,7 @@ VIEWS.produits=()=>{const list=S.produits.filter(p=>(!fC||p.cat===fC)&&(!qP||(p.
   <div class="alert w" style="margin:10px 0">Les délais d'attente pré-remplis sont <b>indicatifs</b> et peuvent changer selon la dose, la voie et l'espèce. La référence reste <b>l'ordonnance et la notice (RCP)</b> — le vétérinaire peut imposer un délai différent. « ? » = à compléter. Base officielle : <a href="https://med-vet.fr" target="_blank" rel="noopener">med-vet.fr</a> (ANMV).</div>
   <div class="row" style="margin-bottom:10px"><input placeholder="Rechercher nom ou molécule…" value="${esc(qP)}" oninput="qP=this.value;render();setTimeout(()=>{const i=document.querySelector('main input');i.focus();i.setSelectionRange(99,99)})" style="flex:1"><select onchange="fC=this.value;render()"><option value="">Toutes catégories</option>${CATS.map(c=>`<option ${fC===c?'selected':''}>${c}</option>`).join('')}</select></div>
   <div class="tw"><table><tr><th>Produit</th><th>Principe actif</th><th>Catégorie</th><th>Unité</th><th>Conditionnement</th><th>Attente lait</th><th>Attente viande</th><th></th></tr>
-  ${list.map(p=>`<tr><td><b>${esc(p.nom)}</b>${p.custom?' <span class="pill g">perso</span>':''}</td><td>${esc(p.principe)}</td><td>${esc(p.cat)}</td><td>${esc(p.unite)}</td><td>${p.contenance?fmt(p.contenance)+' '+esc(p.unite):''}</td><td>${attTxt(p.attL)}</td><td>${attTxt(p.attV)}</td><td><button class="b2 sm" onclick="formProduit('${p.id}')">✎</button></td></tr>`).join('')}</table></div></div>`};
+  ${list.map(p=>`<tr><td><b>${esc(p.nom)}</b>${p.custom?' <span class="pill g">perso</span>':''}${p.noteAtt?`<div class="hint">⚠ ${esc(p.noteAtt)}</div>`:''}</td><td>${esc(p.principe)}</td><td>${esc(p.cat)}</td><td>${esc(p.unite)}</td><td>${p.contenance?fmt(p.contenance)+' '+esc(p.unite):''}</td><td>${attTxt(p.attL)}</td><td>${attTxt(p.attV)}</td><td><button class="b2 sm" onclick="formProduit('${p.id}')">✎</button></td></tr>`).join('')}</table></div></div>`};
 function formProduit(id){const p=id?P(id):{cat:'Antibiotique',unite:'mL'};
   modal(`<h3>${id?'Modifier':'Ajouter'} un produit</h3><div class="grid">
   <label style="grid-column:span 2">Nom commercial *<input name="nom" required value="${esc(p.nom)}"></label>
