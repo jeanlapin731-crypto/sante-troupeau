@@ -374,10 +374,14 @@ const P=id=>S.produits.find(p=>p.id===id);
 const A=id=>S.animaux.find(a=>a.id===id);
 const L=id=>S.lots.find(l=>l.id===id);
 const prodByName=n=>S.produits.find(p=>p.nom.toLowerCase()===String(n).trim().toLowerCase());
-function stock(pid){return S.mouvements.filter(m=>m.produitId===pid).reduce((s,m)=>s+(m.type==='sortie'?-m.qte:m.qte),0)}
+function stock(pid){return Math.round(S.mouvements.filter(m=>m.produitId===pid).reduce((s,m)=>s+(m.type==='sortie'?-m.qte:m.qte),0)*1000)/1000}
 function suivi(p){return p.seuil!=null||S.mouvements.some(m=>m.produitId===p.id)}
-/* Seuil d'alerte : celui saisi à la main, sinon automatique = 20 % de la dernière livraison (nombre × contenance), ou 20 % d'un conditionnement */
-function seuilAuto(p){const e=S.mouvements.filter(m=>m.produitId===p.id&&m.type==='entree'&&m.qte>0).sort((a,b)=>b.date.localeCompare(a.date))[0];const base=e?e.qte:p.contenance;return base?Math.round(base*0.2*100)/100:null}
+/* Seuil d'alerte : celui saisi à la main, sinon automatique = 20 % de la dernière livraison (nombre × contenance), ou 20 % d'un conditionnement.
+   Sans livraison enregistrée, on prend le stock compté lors du dernier inventaire (« Saisir / corriger un stock »). */
+function seuilAuto(p){const ms=S.mouvements.filter(m=>m.produitId===p.id).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  let base=null,q=0,inv=null;
+  ms.forEach(m=>{q+=m.type==='sortie'?-m.qte:m.qte;if(m.type==='entree'&&m.qte>0)base=m.qte;if(m.type==='ajust'&&m.qte>0)inv=q});
+  if(!base)base=inv>0?inv:p.contenance;return base?Math.round(base*0.2*100)/100:null}
 function seuilEff(p){return p.seuil!=null?p.seuil:seuilAuto(p)}
 function seuilTxt(p){const s=seuilEff(p);return s==null?'<span class="mute">—</span>':fmt(s)+' '+esc(p.unite)+(p.seuil==null?' <span class="pill">auto 20 %</span>':'')}
 /* Ajoute aux données existantes les produits du catalogue qui n'y sont pas encore (mises à jour de l'appli) */
@@ -411,7 +415,7 @@ dform.addEventListener('submit',e=>{e.preventDefault();if(onSub&&onSub(new FormD
 /* ================= ALERTES ================= */
 function alertes(){
   const stockBas=[],perim=[];
-  S.produits.filter(suivi).forEach(p=>{const q=stock(p.id),se=seuilEff(p);if(se!=null&&q<=se)stockBas.push({p,q,se});const pe=peremption(p.id);if(pe&&q>0&&pe<=addDays(today(),60))perim.push({p,pe})});
+  S.produits.filter(suivi).forEach(p=>{const q=stock(p.id),se=seuilEff(p);if(q<=0||(se!=null&&q<=se))stockBas.push({p,q,se});const pe=peremption(p.id);if(pe&&q>0&&pe<=addDays(today(),60))perim.push({p,pe})});
   const att={};const t=today();
   S.soins.forEach(s=>s.lignes.forEach(l=>{['attL','attV'].forEach(k=>{const f=finAtt(s,l,k);if(!f)return;if(f==='interdit'){if(addDays(s.date,(l.duree||1)+6)<t)return}else if(f<t)return;
     const ids=s.animalIds.length?s.animalIds:['_'+s.id];ids.forEach(id=>{const o=att[id]=att[id]||{id,s,lait:null,viande:null,prods:new Set()};o.prods.add(l.produitNom);const key=k==='attL'?'lait':'viande';if(f==='interdit')o[key]='interdit';else if(o[key]!=='interdit'&&(!o[key]||f>o[key]))o[key]=f})})}));
@@ -431,7 +435,7 @@ VIEWS.bord=()=>{
    <div class="kpi"><b style="color:${al.att.length?'var(--bad)':'inherit'}">${al.att.length}</b><span>animaux en délai d'attente</span></div>
    <div class="kpi"><b style="color:${al.stockBas.length?'var(--warn)':'inherit'}">${al.stockBas.length}</b><span>produits en fin de stock</span></div></div>
   <div class="row noprint" style="margin-bottom:14px"><button class="b" onclick="formSoin('traitement')">+ Nouveau traitement</button><button class="b" onclick="formSoin('vaccin')">+ Nouvelle vaccination</button><button class="b2" onclick="formEntree()">+ Entrée de stock</button><button class="b2" onclick="formAnimal()">+ Animal</button></div>
-  <div class="card"><h2>⚠️ Fin de stock</h2>${al.stockBas.length?al.stockBas.map(({p,q,se})=>`<div class="alert ${q<=0?'r':'w'}"><b>${esc(p.nom)}</b> : ${q<=0?'épuisé':'il reste '+fmt(q)+' '+esc(p.unite)} (seuil ${fmt(se)} ${esc(p.unite)}${p.seuil==null?', auto 20 %':''})</div>`).join(''):'<p class="mute">Aucun produit sous son seuil d\'alerte.</p>'}
+  <div class="card"><h2>⚠️ Fin de stock</h2>${al.stockBas.length?al.stockBas.map(({p,q,se})=>`<div class="alert ${q<=0?'r':'w'}"><b>${esc(p.nom)}</b> : ${q<=0?'épuisé':'il reste '+fmt(q)+' '+esc(p.unite)}${se!=null?` (seuil ${fmt(se)} ${esc(p.unite)}${p.seuil==null?', auto 20 %':''})`:''}</div>`).join(''):'<p class="mute">Aucun produit sous son seuil d\'alerte.</p>'}
    ${al.perim.map(({p,pe})=>`<div class="alert ${pe<today()?'r':'w'}"><b>${esc(p.nom)}</b> : ${pe<today()?'périmé depuis le':'péremption le'} ${fd(pe)}</div>`).join('')}</div>
   <div class="card"><h2>⏳ Délais d'attente en cours</h2>${al.att.length?`<div class="tw"><table><tr><th>Animal</th><th>Produit(s)</th><th>Lait libre le</th><th>Viande libre le</th></tr>${al.att.sort((a,b)=>String(b.viande).localeCompare(String(a.viande))).map(o=>{const a=A(o.id);const nm=a?esc(a.numero+(a.nom?' – '+a.nom:'')):cible(o.s);const c=v=>v==null?'<span class="mute">—</span>':v==='interdit'?'<span class="pill r">interdit (voir ordonnance)</span>':`<span class="pill ${v>=today()?'r':'g'}">${fd(v)}</span>`;return`<tr><td>${nm}</td><td>${esc([...o.prods].join(', '))}</td><td>${c(o.lait)}</td><td>${c(o.viande)}</td></tr>`}).join('')}</table></div>`:'<p class="mute">Aucun animal en délai d\'attente.</p>'}</div>
   <div class="card"><h2>💉 Rappels de vaccins à prévoir</h2>${al.rappels.length?al.rappels.map(s=>`<div class="alert ${s.rappel<today()?'r':'w'}">${fd(s.rappel)} — ${esc(s.lignes.map(l=>l.produitNom).join(', '))} — ${cible(s)}</div>`).join(''):'<p class="mute">Aucun rappel dans les 45 prochains jours.</p>'}</div>
@@ -636,7 +640,7 @@ function formSoin(type,id,dup){
     let sid;if(id&&!dup){sid=id;Object.assign(s0,o)}else{sid=uid();S.soins.push({id:sid,...o})}
     S.mouvements=S.mouvements.filter(m=>m.soinId!==sid);
     lignes.forEach(l=>{if(l.qte>0)S.mouvements.push({id:uid(),date:o.date,produitId:l.produitId,type:'sortie',qte:l.qte,soinId:sid,ref:(isV?'Vaccin':'Traitement')+' – '+o.motif})});
-    const bas=lignes.map(l=>P(l.produitId)).filter(p=>{const se=seuilEff(p);return se!=null&&stock(p.id)<=se});
+    const bas=lignes.map(l=>P(l.produitId)).filter(p=>{const se=seuilEff(p),q=stock(p.id);return q<=0||(se!=null&&q<=se)});
     if(bas.length)setTimeout(()=>alert('⚠️ Fin de stock :\n'+bas.map(p=>`${p.nom} : reste ${fmt(stock(p.id))} ${p.unite}`).join('\n')),100);
   });
   recalc();
