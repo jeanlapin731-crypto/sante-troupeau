@@ -1,5 +1,5 @@
 // Permet d'ouvrir l'application sans réseau (étable, champ) et de l'installer sur le téléphone.
-const CACHE = 'sante-troupeau-v3';
+const CACHE = 'sante-troupeau-v4';
 const LIBS = ['www.gstatic.com', 'cdn.jsdelivr.net', 'cdnjs.cloudflare.com'];
 const FICHIERS = ['./', './index.html', './firebase-config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 

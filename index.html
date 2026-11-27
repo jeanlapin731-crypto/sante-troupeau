@@ -58,13 +58,15 @@ dialog h3{margin:0 0 12px}
 .lbox{background:#fff;border:1px solid var(--line);border-radius:12px;padding:22px;width:min(420px,100%);display:flex;flex-direction:column;gap:10px}
 .lbox h2{margin:0 0 6px;color:var(--pri)}
 .lbox .err{color:var(--bad);font-size:14px}
+.sync{font-size:12px;font-weight:600;padding:3px 9px;border-radius:12px;vertical-align:middle;cursor:pointer;white-space:nowrap;background:rgba(255,255,255,.22);color:#fff}
+.sync:empty{display:none}.sync.off{background:#f6c344;color:#3a2a00}.sync.env{background:rgba(255,255,255,.4)}
 @media print{header,.noprint,button{display:none!important}body{background:#fff}.card{border:0;padding:0}main{padding:0}}
 @media (max-width:600px){main{padding:10px}header h1{width:100%}}
 </style>
 </head>
 <body>
 <header>
-  <h1>🐄 Santé Troupeau</h1>
+  <h1>🐄 Santé Troupeau <span id="sync" class="sync"></span></h1>
   <nav id="nav"></nav>
 </header>
 <main id="app"></main>
@@ -405,7 +407,6 @@ function render(){
 const dlg=document.getElementById('dlg'),dform=document.getElementById('dlgForm');let onSub=null;
 function modal(html,cb){dform.innerHTML=html+`<div class="foot"><button type="button" class="b2" onclick="dlg.close()">Annuler</button><button class="b">Enregistrer</button></div>`;onSub=cb;dlg.showModal()}
 dform.addEventListener('submit',e=>{e.preventDefault();if(onSub&&onSub(new FormData(dform))!==false){dlg.close();save();render()}});
-dlg.addEventListener('close',()=>{if(window.CLOUD&&CLOUD.pending)CLOUD.applyRemote()});
 
 /* ================= ALERTES ================= */
 function alertes(){
@@ -816,37 +817,94 @@ async function choisir(u,opts={}){
   }catch(e){show(`<p class="err">${msg(e)}</p><button class="b2" id="eOut">Se déconnecter</button>`);document.getElementById('eOut').onclick=()=>AU.signOut(auth)}
 }
 
-/* Les données sont découpées en documents : "base" (animaux, lots, produits) + un document par année pour les soins et les mouvements de stock */
-function toParts(s){const p={base:JSON.stringify({animaux:s.animaux,lots:s.lots,produits:s.produits,derniereSauvegarde:s.derniereSauvegarde})};const g={};
-  s.soins.forEach(x=>{const k='soins-'+(x.date||'0000').slice(0,4);(g[k]=g[k]||[]).push(x)});s.mouvements.forEach(x=>{const k='mouv-'+(x.date||'0000').slice(0,4);(g[k]=g[k]||[]).push(x)});
-  for(const k in g)p[k]=JSON.stringify(g[k]);return p}
+/* Données en ligne : un document par fiche (animal, lot, produit, soin, mouvement de stock).
+   Deux appareils peuvent ajouter des soins en même temps, même hors réseau, sans effacer ceux de l'autre.
+   (Ancien format, converti automatiquement : "base" + un document par année.) */
+const TYP={a:'animaux',l:'lots',p:'produits',s:'soins',m:'mouvements'};
+function toDocs(s){const d={meta:JSON.stringify({derniereSauvegarde:s.derniereSauvegarde||null})};
+  for(const t in TYP)(s[TYP[t]]||[]).forEach(x=>{if(x&&x.id)d['r_'+t+'_'+x.id]=JSON.stringify(x)});return d}
+function fromDocs(d){const s={animaux:[],lots:[],produits:[],soins:[],mouvements:[],derniereSauvegarde:null};
+  Object.keys(d).sort().forEach(k=>{try{if(k==='meta')s.derniereSauvegarde=JSON.parse(d[k]).derniereSauvegarde||null;else if(k.startsWith('r_')&&TYP[k[2]])s[TYP[k[2]]].push(JSON.parse(d[k]))}catch(e){}});return s}
+/* Si deux appareils ont ajouté le même produit du catalogue en même temps, on n'en garde qu'un (le même sur tous les appareils) */
+function dedoublonner(){const vus=new Set(),used=new Set([...S.mouvements.map(m=>m.produitId),...S.soins.flatMap(s=>(s.lignes||[]).map(l=>l.produitId))]);let n=0;
+  [...S.produits].sort((a,b)=>a.id<b.id?-1:1).forEach(p=>{if(p.custom)return;const k=p.nom.toLowerCase();if(!vus.has(k)){vus.add(k);return}if(used.has(p.id))return;S.produits.splice(S.produits.indexOf(p),1);n++});return n}
 function fromParts(p){const b=JSON.parse(p.base||'{}');const s={animaux:b.animaux||[],lots:b.lots||[],produits:b.produits||[],derniereSauvegarde:b.derniereSauvegarde||null,soins:[],mouvements:[]};
   for(const k in p){if(k.startsWith('soins-'))s.soins.push(...JSON.parse(p[k]));else if(k.startsWith('mouv-'))s.mouvements.push(...JSON.parse(p[k]))}return s}
 
 function ouvrir(eid,u,nbExploit){
-  const C={eid,nom:'',email:u.email,invites:[],membres:1,nbExploit:nbExploit||1,remote:{},known:{},pending:false,ready:false};
+  const C={eid,nom:'',email:u.email,invites:[],membres:1,nbExploit:nbExploit||1,known:{},ready:false,md:null,depuis:Date.now()};
   window.CLOUD=C;
   const KE='st.exploitation.'+u.uid;try{localStorage.setItem(KE,eid)}catch(e){}
   C.changer=()=>{try{localStorage.removeItem(KE)}catch(e){}location.reload()};
   C.quitter=()=>{if(!confirm('Quitter l\'exploitation « '+C.nom+' » ? Vous n\'y aurez plus accès, sauf si un membre vous autorise à nouveau.'))return;FS.updateDoc(FS.doc(db,'exploitations',eid),{membres:FS.arrayRemove(u.uid)}).then(C.changer).catch(e=>alert(msg(e)))};
   const ref=FS.doc(db,'exploitations',eid);
-  C.applyRemote=()=>{setS(fromParts(C.remote));C.known={...C.remote};C.pending=false;render()};
-  C.push=()=>{const cur=toParts(getS());const batch=FS.writeBatch(db);let n=0;
-    new Set([...Object.keys(cur),...Object.keys(C.known)]).forEach(k=>{const v=cur[k]??'[]',old=C.known[k]??'[]';if(v!==old){batch.set(FS.doc(db,'exploitations',eid,'data',k),{json:v,maj:FS.serverTimestamp(),par:u.email});C.known[k]=v;C.remote[k]=v;n++}});
-    if(n)batch.commit().catch(e=>alert('Erreur d\'enregistrement en ligne : '+msg(e)));
-    if(C.pending)C.applyRemote()};
+  const dref=k=>FS.doc(db,'exploitations',eid,'data',k);
+  /* Envoie seulement les fiches ajoutées, modifiées ou supprimées depuis la dernière synchronisation */
+  C.push=()=>{const cur=toDocs(getS()),ops=[];
+    for(const k in cur)if(cur[k]!==C.known[k])ops.push([k,cur[k]]);
+    for(const k in C.known)if(!(k in cur))ops.push([k,null]);
+    if(!ops.length)return;
+    ops.forEach(([k,v])=>{if(v==null)delete C.known[k];else C.known[k]=v});
+    for(let i=0;i<ops.length;i+=400){const part=ops.slice(i,i+400),b=FS.writeBatch(db);
+      part.forEach(([k,v])=>v==null?b.delete(dref(k)):b.set(dref(k),{json:v,maj:FS.serverTimestamp(),par:u.email}));
+      b.commit().catch(e=>{part.forEach(([k])=>C.known[k]='?');etat();alert('Erreur d\'enregistrement en ligne : '+msg(e))})}
+    etat()};
+  /* Applique une fiche reçue d'un autre appareil (modifiée sur place pour ne pas casser une fenêtre ouverte) */
+  function appliquer(k,json){
+    if(k==='meta'){S.derniereSauvegarde=json?(JSON.parse(json).derniereSauvegarde||null):null;return}
+    const arr=S[TYP[k[2]]];if(!arr)return;const id=k.slice(4),i=arr.findIndex(x=>x.id===id);
+    if(json==null){if(i>=0)arr.splice(i,1);return}
+    const o=JSON.parse(json);if(i>=0){const x=arr[i];Object.keys(x).forEach(f=>delete x[f]);Object.assign(x,o)}else arr.push(o)}
+  /* Rafraîchit l'écran sans gêner une saisie en cours */
+  let aRendre=false;
+  function rafraichir(){const f=document.activeElement;
+    if(dlg.open||(f&&f.closest&&f.closest('#app')&&/INPUT|TEXTAREA|SELECT/.test(f.tagName))){aRendre=true;return}aRendre=false;render()}
+  dlg.addEventListener('close',()=>{if(aRendre)setTimeout(rafraichir,0)});
+  document.addEventListener('focusout',()=>{if(aRendre)setTimeout(()=>{if(aRendre)rafraichir()},300)});
+  /* Voyant de synchronisation dans l'en-tête */
+  function etat(){const el=document.getElementById('sync');if(!el)return;const md=C.md;
+    const enAttente=Object.values(C.known).includes('?');
+    let t,c;
+    if(!navigator.onLine||!md||md.fromCache){t='📴 Hors ligne';c='off'}
+    else if(md.hasPendingWrites||enAttente){t='⟳ Envoi…';c='env'}
+    else{t='✓ À jour';c='ok'}
+    el.textContent=t;el.className='sync '+c;
+    el.title=c==='off'?'Pas de connexion : vos saisies sont gardées sur cet appareil et partiront dès le retour du réseau. Appuyez pour réessayer.':c==='env'?'Envoi en cours…':'Synchronisé avec les autres appareils. Appuyez pour forcer une vérification.'}
+  /* Relance la connexion (utile au retour de veille du téléphone, où elle peut rester bloquée) */
+  let relance=null;
+  C.relancer=()=>{if(relance)return relance;relance=FS.disableNetwork(db).then(()=>FS.enableNetwork(db)).catch(()=>{}).finally(()=>{relance=null;C.depuis=Date.now();etat()});return relance};
+  let cache=0;
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){cache=Date.now();return}if(Date.now()-cache>15000)C.relancer()});
+  window.addEventListener('pageshow',e=>{if(e.persisted)C.relancer()});
+  window.addEventListener('online',()=>{etat();C.relancer()});
+  window.addEventListener('offline',etat);
+  setInterval(()=>{if(!document.hidden&&navigator.onLine&&C.md&&C.md.fromCache&&Date.now()-C.depuis>30000)C.relancer()},15000);
+  document.getElementById('sync').onclick=()=>{C.relancer();if(C.push)C.push()};
   C.inviter=m=>{m=String(m||'').trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(m))return alert('Adresse e-mail invalide.');FS.updateDoc(ref,{invites:FS.arrayUnion(m)}).catch(e=>alert(msg(e)))};
   C.retirerInvite=m=>FS.updateDoc(ref,{invites:FS.arrayRemove(m)}).catch(e=>alert(msg(e)));
   C.logout=()=>AU.signOut(auth).then(()=>location.reload());
   FS.onSnapshot(ref,d=>{const x=d.data()||{};C.nom=x.nom||'';C.invites=x.invites||[];C.membres=(x.membres||[]).length;if(C.ready&&tab==='sauvegarde'&&!dlg.open)render()});
-  FS.onSnapshot(FS.collection(db,'exploitations',eid,'data'),snap=>{
-    const r={};snap.forEach(d=>r[d.id]=d.data().json);
-    if(!C.ready&&!r.base&&snap.metadata.fromCache)return; // attendre la réponse du serveur avant de conclure que l'exploitation est vide
-    C.remote=r;
-    if(!C.ready){C.ready=true;box.style.display='none';
-      if(!r.base){setS(blank());C.known={};C.push();render();return}
-      C.applyRemote();if(mergeCatalogue(getS())){C.push();render()}return}
-    if(dlg.open)C.pending=true;else C.applyRemote();
+  const garder=k=>k==='meta'||k.startsWith('r_');
+  FS.onSnapshot(FS.collection(db,'exploitations',eid,'data'),{includeMetadataChanges:true},snap=>{
+    const md=snap.metadata,avant=C.md&&C.md.fromCache;C.md=md;if(avant&&!md.fromCache)C.depuis=Date.now();
+    if(!C.ready){
+      const all={};snap.forEach(d=>all[d.id]=d.data().json);
+      if(!('v2' in all)&&md.fromCache)return; // attendre la réponse du serveur avant de convertir ou de conclure que l'exploitation est vide
+      C.ready=true;box.style.display='none';
+      if('v2' in all){const r={};for(const k in all)if(garder(k))r[k]=all[k];setS(fromDocs(r));C.known=r;
+        const n=mergeCatalogue(getS())+dedoublonner();if(n)C.push()}
+      else{ // première ouverture avec cette version : conversion de l'ancien format (les anciens documents restent en sauvegarde)
+        setS(all.base?fromParts(all):blank());if(all.base)mergeCatalogue(getS());C.known={};C.push();
+        FS.setDoc(dref('v2'),{le:FS.serverTimestamp(),par:u.email}).catch(()=>{})}
+      render();etat();return}
+    let chg=false;
+    snap.docChanges().forEach(ch=>{const k=ch.doc.id;if(!garder(k)||ch.doc.metadata.hasPendingWrites)return;
+      const v=ch.type==='removed'?null:ch.doc.data().json;
+      if(v===(C.known[k]??null))return;
+      if(v==null)delete C.known[k];else C.known[k]=v;
+      try{appliquer(k,v);chg=true}catch(e){}});
+    if(chg){if(dedoublonner())C.push();rafraichir()}
+    etat();
   },e=>show(`<p class="err">Accès aux données impossible : ${msg(e)}</p>`));
 }
 
